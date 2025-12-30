@@ -1,0 +1,6 @@
+# 忽略任意层级下的 .env 文件
+.env
+**/.env
+dist/
+pack.sh
+*.egg-info/

@@ -12,6 +12,7 @@ authors = [
 ]
 keywords = ["agent", "skills", "tooling", "function-calling"]
 requires-python = ">=3.8"
+license = { text = "MIT" }
 
 dependencies = []
 
@@ -43,16 +44,11 @@ langchain = [
 
 [tool.setuptools]
 packages = ["skills_for_all_agent"]
+license-files = []
 
 [tool.setuptools.package-data]
 skills_for_all_agent = [
   "skills/**/*",
-  "skills/**/*.md",
-  "skills/**/*.c"
 ]
 
-[tool.setuptools.data-files]
-"langchain_example" = ["langchain_example/*"]
 
-[tool.setuptools.package-data]
-skills_for_all_agent = ["skills/**/*", "skills/**/*.md", "skills/**/*.c"]

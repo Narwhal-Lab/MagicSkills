@@ -1,4 +1,0 @@
-include README.md
-include LICENSE
-recursive-include skills_for_all_agent *.py
-recursive-include langchain_example *.py *.md
