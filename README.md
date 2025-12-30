@@ -10,19 +10,20 @@ anthropic Claude提出了关于一新范式skills的相关规范来扩展大模�
 
 期间我寻找了相关使用skill的实战与实现的资源
 
-agentscope 的skill实现[Agent Skill](https://doc.agentscope.io/tutorial/task_agent_skill.html#integrating-agent-skills-with-reactagent)
+1. agentscope 的skill实现[Agent Skill](https://doc.agentscope.io/tutorial/task_agent_skill.html#integrating-agent-skills-with-reactagent)
+2. anthropic sdk 的skill实战 [src/anthropic/resources/beta/skills](https://github.com/anthropics/anthropic-sdk-python/tree/main/src/anthropic/resources/beta/skills)
+3. claude-codebooks的skill实战  [skills](https://github.com/anthropics/claude-cookbooks/tree/main/skills)
+4. DeepAgents的 skill实现 [Using skills with Deep Agents](https://blog.langchain.com/using-skills-with-deep-agents/)
 
-anthropic sdk 的skill实战 [src/anthropic/resources/beta/skills](https://github.com/anthropics/anthropic-sdk-python/tree/main/src/anthropic/resources/beta/skills)
-
-claude-codebooks的skill实战  [skills](https://github.com/anthropics/claude-cookbooks/tree/main/skills)
-
-DeepAgents的 skill实现 [Using skills with Deep Agents](https://blog.langchain.com/using-skills-with-deep-agents/)
+## 存在的问题
 
 但它存在以下问题
 
 1. 和agent框架高度耦合 并没有统一成一个一致的接口能面向所有agent框架使用
 2. 部分skills的实现并没有开发源码
 3. 关于各个skill文档内容 也并没有面向所有agent框架 也没有与skills实现深度绑定
+
+## 想法
 
 所以，我想实现一个skill系统，它能以非常简单的方式无缝提供给所有agent框架使用skill。同时各个skill文档内容也随着这个skill系统深度绑定，所有agent框架可以在使用skill的同时也能获取skill文档。
 
@@ -39,9 +40,7 @@ DeepAgents的 skill实现 [Using skills with Deep Agents](https://blog.langchain
 4. 包中带有skill内容，所有通过pip3 install skills_for_all_agent后都可以通过自带的一个前端界面自动化生成自己想要的skill内容 或者上传自己的skill内容。
 5. agent使用skill时可以自动使用你以及生成的skill内容或者你上传的skill内容
 
-
-
-
+## 交流
 
 如果有不足的地方想提供建议或者想一起参与的大佬。 请扫码加入微信群。欢迎大家一起交流！！！
 
