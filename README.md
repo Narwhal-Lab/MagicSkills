@@ -1,6 +1,10 @@
 # Skills-For-All-Agent-首个无缝支持所有agent框架的skill系统
 
-一个python package 作为skill系统去无缝接轨所有agent框架，并将skill内容和agent使用skill能力绑定形成一个完整skill生态
+与**Claude Code**的skills system完全吻合的实现-同时不仅仅局限于**Claude Code的skills system，它 更轻量化 更兼容 更自由化 更生态化**
+
+## 这是什么
+
+一个python package 作为skills系统去无缝接轨所有agent框架，并将skill内容和agent使用skill能力绑定形成一个完整skill生态
 
 ## 出发点
 
@@ -14,14 +18,18 @@ anthropic Claude提出了关于一新范式skills的相关规范来扩展大模�
 2. anthropic sdk 的skill实战 [src/anthropic/resources/beta/skills](https://github.com/anthropics/anthropic-sdk-python/tree/main/src/anthropic/resources/beta/skills)
 3. claude-codebooks的skill实战  [skills](https://github.com/anthropics/claude-cookbooks/tree/main/skills)
 4. DeepAgents的 skill实现 [Using skills with Deep Agents](https://blog.langchain.com/using-skills-with-deep-agents/)
+5. openskills的skill实现 [Universal skills loader for AI coding agents - npm i -g openskills](https://github.com/numman-ali/openskills)
 
 ## 存在的问题
 
-但它存在以下问题
+但它们存在以下问题
 
 1. 和agent框架高度耦合 并没有统一成一个一致的接口能面向所有agent框架使用
 2. 部分skills的实现并没有开发源码
 3. 关于各个skill文档内容 也并没有面向所有agent框架 也没有与skills实现深度绑定
+4. 没有以一个统一的 轻量化的方式提供给所有agent框架
+5. 冗余的不是python的外部软件生态 而大部分agent框架是由python完成的
+6. 强制在system prompt给出所有skill描述。而不是模型自主地去考虑是否要查看所有skill描述并使用skill
 
 ## 想法
 
@@ -39,6 +47,7 @@ anthropic Claude提出了关于一新范式skills的相关规范来扩展大模�
 3. 只需要pip3 install skills_for_all_agent 并提供给agent一个tool即可让agent使用skill
 4. 包中带有skill内容，所有通过pip3 install skills_for_all_agent后都可以通过自带的一个前端界面自动化生成自己想要的skill内容 或者上传自己的skill内容。
 5. agent使用skill时可以自动使用你以及生成的skill内容或者你上传的skill内容
+6. 不会强制在system prompt给它skill相关提示词。只用给它这个工具的描述。它便可以自主地决定是否要适用skills。
 
 ## 交流
 
