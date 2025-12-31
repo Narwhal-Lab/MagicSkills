@@ -85,7 +85,7 @@ def main():
     tool = build_skill_tool()
 
     llm = ChatTongyi(
-        model_name="qwen3-max-preview",
+        model_name=os.getenv("MODEL"),
         api_key= os.getenv("DASHSCOPE_API_KEY"),
         temperature=0,
     )

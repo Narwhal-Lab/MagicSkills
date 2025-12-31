@@ -1,3 +1,3 @@
-from .skill_tool import skill_tool, SkillError, SkillMetadata
+from .skill_tool import skill_tool, SkillError, SkillMetadata, SkillStore
 
-__all__ = ["skill_tool", "SkillError", "SkillMetadata"]
+__all__ = ["skill_tool", "SkillError", "SkillMetadata", "SkillStore"]

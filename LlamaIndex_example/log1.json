@@ -1,0 +1,209 @@
+python3 ./example.py 
+
+================================================================================
+[TOOL CALL] skill_tool
+[INPUT PAYLOAD]
+{
+  "action": "list_metadata",
+  "arg": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills"
+}
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/web-artifacts-builder
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/slack-gif-creator
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/webapp-testing
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/doc-coauthoring
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/pptx
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/pdf
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/mcp-builder
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/algorithmic-art
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/skill-creator
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/theme-factory
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/internal-comms
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/docx
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/canvas-design
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/frontend-design
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/brand-guidelines
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/c_2_ast
+/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/xlsx
+[RAW RESULT]
+{
+  "ok": true,
+  "skills": [
+    {
+      "name": "web-artifacts-builder",
+      "description": "Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/web-artifacts-builder"
+    },
+    {
+      "name": "slack-gif-creator",
+      "description": "Knowledge and utilities for creating animated GIFs optimized for Slack. Provides constraints, validation tools, and animation concepts. Use when users request animated GIFs for Slack like \"make me a GIF of X doing Y for Slack.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/slack-gif-creator"
+    },
+    {
+      "name": "webapp-testing",
+      "description": "Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/webapp-testing"
+    },
+    {
+      "name": "doc-coauthoring",
+      "description": "Guide users through a structured workflow for co-authoring documentation. Use when user wants to write documentation, proposals, technical specs, decision docs, or similar structured content. This workflow helps users efficiently transfer context, refine content through iteration, and verify the doc works for readers. Trigger when user mentions writing docs, creating proposals, drafting specs, or similar documentation tasks.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/doc-coauthoring"
+    },
+    {
+      "name": "pptx",
+      "description": "Presentation creation, editing, and analysis. When Claude needs to work with presentations (.pptx files) for: (1) Creating new presentations, (2) Modifying or editing content, (3) Working with layouts, (4) Adding comments or speaker notes, or any other presentation tasks",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/pptx"
+    },
+    {
+      "name": "pdf",
+      "description": "Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/pdf"
+    },
+    {
+      "name": "mcp-builder",
+      "description": "Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/mcp-builder"
+    },
+    {
+      "name": "algorithmic-art",
+      "description": "Creating algorithmic art using p5.js with seeded randomness and interactive parameter exploration. Use this when users request creating art using code, generative art, algorithmic art, flow fields, or particle systems. Create original algorithmic art rather than copying existing artists' work to avoid copyright violations.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/algorithmic-art"
+    },
+    {
+      "name": "skill-creator",
+      "description": "Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/skill-creator"
+    },
+    {
+      "name": "theme-factory",
+      "description": "Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/theme-factory"
+    },
+    {
+      "name": "internal-comms",
+      "description": "A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/internal-comms"
+    },
+    {
+      "name": "docx",
+      "description": "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. When Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/docx"
+    },
+    {
+      "name": "canvas-design",
+      "description": "Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/canvas-design"
+    },
+    {
+      "name": "frontend-design",
+      "description": "Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/frontend-design"
+    },
+    {
+      "name": "brand-guidelines",
+      "description": "Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/brand-guidelines"
+    },
+    {
+      "name": "c-to-ast",
+      "description": "Parse C source code into an Abstract Syntax Tree (AST). Use when analyzing C programs, understanding code structure, performing static analysis, or preparing code for further program analysis (e.g., CFG, DFG, vulnerability detection).",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/c_2_ast"
+    },
+    {
+      "name": "xlsx",
+      "description": "Comprehensive spreadsheet creation, editing, and analysis with support for formulas, formatting, data analysis, and visualization. When Claude needs to work with spreadsheets (.xlsx, .xlsm, .csv, .tsv, etc) for: (1) Creating new spreadsheets with formulas and formatting, (2) Reading or analyzing data, (3) Modify existing spreadsheets while preserving formulas, (4) Data analysis and visualization in spreadsheets, or (5) Recalculating formulas",
+      "path": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/xlsx"
+    }
+  ],
+  "prompt": "## Skills\n- web-artifacts-builder: Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts.\n- slack-gif-creator: Knowledge and utilities for creating animated GIFs optimized for Slack. Provides constraints, validation tools, and animation concepts. Use when users request animated GIFs for Slack like \"make me a GIF of X doing Y for Slack.\n- webapp-testing: Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.\n- doc-coauthoring: Guide users through a structured workflow for co-authoring documentation. Use when user wants to write documentation, proposals, technical specs, decision docs, or similar structured content. This workflow helps users efficiently transfer context, refine content through iteration, and verify the doc works for readers. Trigger when user mentions writing docs, creating proposals, drafting specs, or similar documentation tasks.\n- pptx: Presentation creation, editing, and analysis. When Claude needs to work with presentations (.pptx files) for: (1) Creating new presentations, (2) Modifying or editing content, (3) Working with layouts, (4) Adding comments or speaker notes, or any other presentation tasks\n- pdf: Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.\n- mcp-builder: Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).\n- algorithmic-art: Creating algorithmic art using p5.js with seeded randomness and interactive parameter exploration. Use this when users request creating art using code, generative art, algorithmic art, flow fields, or particle systems. Create original algorithmic art rather than copying existing artists' work to avoid copyright violations.\n- skill-creator: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.\n- theme-factory: Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.\n- internal-comms: A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).\n- docx: Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. When Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks\n- canvas-design: Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations.\n- frontend-design: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.\n- brand-guidelines: Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.\n- c-to-ast: Parse C source code into an Abstract Syntax Tree (AST). Use when analyzing C programs, understanding code structure, performing static analysis, or preparing code for further program analysis (e.g., CFG, DFG, vulnerability detection).\n- xlsx: Comprehensive spreadsheet creation, editing, and analysis with support for formulas, formatting, data analysis, and visualization. When Claude needs to work with spreadsheets (.xlsx, .xlsm, .csv, .tsv, etc) for: (1) Creating new spreadsheets with formulas and formatting, (2) Reading or analyzing data, (3) Modify existing spreadsheets while preserving formulas, (4) Data analysis and visualization in spreadsheets, or (5) Recalculating formulas"
+}
+================================================================================
+
+
+================================================================================
+[TOOL CALL] skill_tool
+[INPUT PAYLOAD]
+{
+  "action": "read_file",
+  "arg": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/c_2_ast/SKILL.md"
+}
+[RAW RESULT]
+{
+  "ok": true,
+  "content": "---\nname: c-to-ast\ndescription: Parse C source code into an Abstract Syntax Tree (AST). Use when analyzing C programs, understanding code structure, performing static analysis, or preparing code for further program analysis (e.g., CFG, DFG, vulnerability detection).\n---\n\n# C to AST Skill\n\n## Purpose\n\nThis Skill converts **C source code** into its **Abstract Syntax Tree (AST)** representation.\n\nUse this Skill when you need to:\n- Understand the structure of a C program\n- Analyze functions, statements, and expressions\n- Prepare C code for static analysis or security analysis\n- Transform C code into an intermediate representation (AST)\n- Feed structured code information into downstream tools or agents\n\nThe AST is generated using a Python-based C parser and printed directly to standard output.\n\n---\n\n## When to Use\n\nApply this Skill when the user asks to:\n- “Parse this C code”\n- “Convert this C file to an AST”\n- “Show me the AST of this C program”\n- “Analyze the structure of this C code”\n- “Extract syntax tree / abstract syntax tree from C”\n\nThis Skill is especially useful in **compiler frontends**, **program analysis**, and **security research** workflows.\n\n---\n\n## Instructions\n\nFollow these steps strictly and in order:\n\n1. **Navigate to the Skill scripts directory**\n   - Change working directory to:\n     ```\n     skills_for_all_agent/skill/c_2_ast/scripts/\n     ```\n\n2. **Handle the input C source**\n   - If the user provides a **path to a `.c` file**, use it directly.\n   - If the user provides **inline C code as a string**, you must first save it to a C source file using the provided script:\n     ```bash\n     python3 save_c.py --input \"<C code string>\" --output <output_dir> --filename <filename>.c\n     ```\n   - Ensure the generated file has a `.c` extension and is successfully written to disk.\n\n3. **Run the AST extraction script**\n   - Convert the C source file to its Abstract Syntax Tree by executing:\n     ```bash\n     python3 c_2_ast.py --input <path_to_c_file>\n     ```\n\n4. **Do not modify the source code**\n   - This Skill is strictly read-only.\n   - Do not rewrite, reformat, optimize, or otherwise alter the C code.\n\n5. **Return the AST output verbatim**\n   - The script prints the AST directly to standard output.\n   - Return the output exactly as produced.\n   - Do not summarize, paraphrase, or restructure the AST.\n   - Preserve indentation, hierarchy, and node ordering.\n\n6. **If parsing fails**\n   - Report the exact error message produced by the script.\n   - Suggest likely causes, such as:\n     - Missing or unsupported header files\n     - Unsupported C extensions (e.g., compiler-specific syntax)\n     - Invalid or incomplete C syntax\n\n---\n\n## Output Format\n\nThe output is a **tree-structured textual AST**, for example:\n\n````\n\nFileAST:\nFuncDef:\nDecl: main\nFuncDecl:\nTypeDecl:\nIdentifierType: ['int']\nCompound:\nFuncCall:\nID: puts\nExprList:\nConstant: string, \"Hello\"\nReturn:\nConstant: int, 0\n\n````\n\nThis output represents the syntactic structure of the C program and can be consumed by downstream tools.\n\n---\n\n## Additional Resources\n\nFor deeper understanding of:\n- AST node types\n- `pycparser` internal representation\n- Meaning of specific syntax tree nodes\n- Limitations of the C grammar supported\n\nsee the accompanying reference document:\n\n➡️ **[reference.md](reference.md)**\n\nOnly read this file **when more detailed or theoretical information is required**.  \nFor standard AST extraction tasks, this Skill file alone is sufficient.\n\n---\n\n## Notes and Limitations\n\n- The AST follows standard C syntax (C89/C99 subset).\n- Some compiler-specific extensions (e.g., GCC attributes) may not be supported.\n- Header files are handled using a minimal fake libc environment.\n- Macro-heavy or highly platform-specific code may require preprocessing.\n\n---\n\n## Examples\n\n### Example 1: Simple AST extraction\n\nUser request:\n> Convert this C file to an AST.\n\nAction:\n```bash\npython3 c_2_AST.py --input example.c\n````\n\nResult:\n\n* The AST is printed directly.\n\n---\n\n### Example 2: Security analysis preparation\n\nUser request:\n\n> I want to analyze this C program for vulnerabilities.\n\nAction:\n\n* First, extract the AST using this Skill.\n* Then, pass the AST to a vulnerability analysis or pattern-matching process.\n\n---\n\n## Best Practices\n\n* Use this Skill **before** any deep code analysis.\n* Treat the AST as an intermediate representation.\n* Combine with CFG/DFG or semantic analysis for advanced tasks.\n\n---\n\nEnd of Skill.\n"
+}
+================================================================================
+
+
+================================================================================
+[TOOL CALL] skill_tool
+[INPUT PAYLOAD]
+{
+  "action": "read_file",
+  "arg": "/root/LLK/skills_for_all_agent/skills_for_all_agent/skills/c_2_ast/reference.md"
+}
+[RAW RESULT]
+{
+  "ok": true,
+  "content": "# reference.md\n\n## C Abstract Syntax Tree (AST) Reference\n\nThis document provides **detailed reference material** for understanding the **Abstract Syntax Tree (AST)** generated from C source code by the `c_2_AST.py` script.\n\nRead this file **only when deeper knowledge is required**, such as:\n\n* Interpreting specific AST node types\n* Writing AST-based analyses or transformations\n* Performing vulnerability detection or code pattern matching\n* Mapping syntax to semantic structures (CFG / DFG)\n\n---\n\n## 1. What Is a C AST?\n\nAn **Abstract Syntax Tree (AST)** is a hierarchical representation of a program’s syntactic structure.\n\nKey properties:\n\n* Represents **syntax**, not runtime behavior\n* Ignores formatting, comments, and whitespace\n* Encodes structure: declarations, statements, expressions\n\nASTs are commonly used in:\n\n* Compilers and interpreters\n* Static analysis tools\n* Security auditing and vulnerability detection\n* Program understanding and refactoring tools\n\n---\n\n## 2. AST Format Used in This Skill\n\nThis Skill uses **`pycparser`**, a pure-Python C parser that supports a large subset of ISO C.\n\nThe AST is represented as a tree of Python objects, printed in a readable textual format using:\n\n```python\nast.show()\n```\n\nThe root node is always:\n\n```\nFileAST\n```\n\n---\n\n## 3. High-Level AST Structure\n\n```\nFileAST\n ├── Decl\n ├── FuncDef\n │    ├── Decl\n │    ├── ParamList\n │    └── Compound\n └── ...\n```\n\n* `FileAST`: Entire translation unit\n* Each child corresponds to a **top-level declaration or definition**\n\n---\n\n## 4. Core Node Types (Most Important)\n\n### 4.1 FileAST\n\n**Root node** of the AST.\n\n```text\nFileAST:\n  ext[0]: FuncDef\n  ext[1]: Decl\n```\n\nContains:\n\n* Global variable declarations\n* Function definitions\n* Type definitions\n\n---\n\n### 4.2 FuncDef (Function Definition)\n\nRepresents a full function definition.\n\n```text\nFuncDef:\n  Decl: main\n  ParamList\n  Compound\n```\n\nComponents:\n\n* `Decl`: function signature\n* `ParamList`: parameters (may be empty)\n* `Compound`: function body\n\n---\n\n### 4.3 Decl (Declaration)\n\nUsed for:\n\n* Variables\n* Functions\n* Parameters\n\n```text\nDecl: x\n  TypeDecl\n  Constant\n```\n\nKey attributes:\n\n* `name`: identifier\n* `type`: declared type\n* `init`: initializer (if any)\n\n---\n\n### 4.4 Type Nodes\n\nType information is represented hierarchically.\n\n#### TypeDecl\n\n```text\nTypeDecl:\n  IdentifierType: ['int']\n```\n\n#### PtrDecl\n\n```text\nPtrDecl:\n  TypeDecl\n```\n\n#### ArrayDecl\n\n```text\nArrayDecl:\n  TypeDecl\n  Constant\n```\n\n---\n\n### 4.5 Compound (Block)\n\nRepresents a `{ ... }` block.\n\n```text\nCompound:\n  Decl\n  Assignment\n  Return\n```\n\nUsed for:\n\n* Function bodies\n* Control-flow blocks\n\n---\n\n## 5. Statement Nodes\n\n### 5.1 Assignment\n\n```text\nAssignment:\n  ID: x\n  BinaryOp: +\n```\n\nRepresents:\n\n```c\nx = a + b;\n```\n\n---\n\n### 5.2 Return\n\n```text\nReturn:\n  Constant: int, 0\n```\n\nRepresents:\n\n```c\nreturn 0;\n```\n\n---\n\n### 5.3 If\n\n```text\nIf:\n  BinaryOp\n  Compound\n  Compound\n```\n\nRepresents:\n\n```c\nif (cond) { ... } else { ... }\n```\n\n---\n\n### 5.4 While / For\n\n```text\nWhile:\n  BinaryOp\n  Compound\n```\n\n```text\nFor:\n  Assignment\n  BinaryOp\n  Assignment\n  Compound\n```\n\n---\n\n## 6. Expression Nodes\n\n### 6.1 ID\n\n```text\nID: x\n```\n\nVariable reference.\n\n---\n\n### 6.2 Constant\n\n```text\nConstant: int, 42\nConstant: string, \"hello\"\n```\n\nLiteral values.\n\n---\n\n### 6.3 BinaryOp\n\n```text\nBinaryOp: +\n  ID: a\n  ID: b\n```\n\nRepresents:\n\n```c\na + b\n```\n\nOperators include:\n`+ - * / % < > == != && ||`\n\n---\n\n### 6.4 FuncCall\n\n```text\nFuncCall:\n  ID: puts\n  ExprList\n```\n\nRepresents:\n\n```c\nputs(\"hello\");\n```\n\n---\n\n## 7. Common Patterns (Analysis-Oriented)\n\n### Function Call Detection\n\nLook for:\n\n```\nFuncCall → ID(name)\n```\n\nUseful for:\n\n* Detecting dangerous functions (`gets`, `strcpy`)\n* API usage analysis\n\n---\n\n### Control Flow Detection\n\nLook for:\n\n* `If`\n* `For`\n* `While`\n* `Switch`\n\nThese nodes form the basis of **CFG construction**.\n\n---\n\n### Memory-Related Operations\n\nRelevant nodes:\n\n* `FuncCall` to `malloc`, `free`\n* Pointer `PtrDecl`\n* Dereference via `UnaryOp: *`\n\n---\n\n## 8. Limitations and Caveats\n\n* Supports **standard C**, not full GCC extensions\n* Macro-heavy code may be simplified by preprocessing\n* No semantic analysis (types are syntactic, not resolved)\n* No symbol resolution across files\n\nFor complex builds, preprocessing quality matters.\n\n---\n\n## 9. Typical Downstream Uses\n\nASTs extracted by this Skill are commonly used for:\n\n* Building **Control Flow Graphs (CFG)**\n* Extracting **Data Flow Graphs (DFG)**\n* Pattern-based vulnerability detection\n* Code similarity and embedding\n* Automated refactoring and transformation\n\n---\n\n## 10. Summary\n\n* AST = **structured syntax representation**\n* `FileAST` is always the root\n* Nodes map closely to C language constructs\n* Ideal intermediate form for static analysis and security research\n\nUse this reference as a **lookup guide**, not as required reading for every task.\n\n---\n\nEnd of reference.\n"
+}
+================================================================================
+
+抽象语法树（Abstract Syntax Tree，简称 AST）是程序源代码语法结构的一种树状表示形式。它以层次化的方式精确描述代码的组成，忽略诸如空格、注释等无关细节，专注于语言的结构性元素。
+
+### 1. 什么是 AST？
+
+AST 是源代码经过词法分析和语法分析后生成的**抽象语法结构树**。它是编译器、解释器、代码编辑器（如语法高亮、自动补全）、静态分析工具和代码转换工具的核心中间表示。
+
+- **抽象**：不包含具体语法符号（如分号、括号），只保留结构意义。
+- **语法**：基于编程语言的语法规则构建。
+- **树**：采用树形数据结构，有根节点、内部节点和叶子节点。
+
+例如，C 语言代码 `return a + b;` 的 AST 可能如下：
+```
+Return:
+  BinaryOp: +
+    ID: a
+    ID: b
+```
+
+### 2. AST 的核心结构（以 C 语言为例）
+
+本系统使用 `pycparser` 库解析 C 代码，其 AST 结构如下：
+
+- **`FileAST`**：根节点，代表整个源文件，包含所有顶层声明。
+- **`FuncDef`**：函数定义节点，包含函数名、参数列表和函数体。
+- **`Decl`**：声明节点，用于变量、函数或参数的声明。
+- **`Compound`**：复合语句（即 `{}` 块），表示一组语句的集合，常用于函数体或控制流中。
+- **`TypeDecl` / `PtrDecl` / `ArrayDecl`**：类型相关节点，分别表示基本类型、指针类型和数组类型。
+
+### 3. 常见节点类型
+
+| 节点类型      | 含义                         | 示例                     |
+|-------------|----------------------------|------------------------|
+| `ID`        | 标识符（变量名、函数名）         | `x`, `main`            |
+| `Constant`  | 常量（整数、字符串等）           | `42`, `"hello"`        |
+| `BinaryOp`  | 二元操作（+、-、== 等）         | `a + b`                |
+| `Assignment`| 赋值操作                      | `x = 5;`               |
+| `If`        | 条件语句                      | `if (cond) { ... }`    |
+| `While/For` | 循环语句                      | `while (i < 10)`       |
+| `FuncCall`  | 函数调用                      | `printf("Hi");`        |
+| `Return`    | 返回语句                      | `return 0;`            |
+
+### 4. AST 的用途
+
+- **编译器前端**：将源码转换为中间表示，便于后续优化和代码生成。
+- **静态分析**：检测潜在漏洞（如使用 `strcpy`）、代码坏味道、未使用变量等。
+- **代码格式化与重构**：Prettier、ESLint 等工具依赖 AST 进行代码转换。
+- **代码高亮与智能提示**：IDE 通过分析 AST 提供上下文感知功能。
+- **代码生成**：Babel 将新语法的 AST 转换为旧语法。
+- **程序理解**：帮助开发者快速理解大型代码库的结构。
+
+### 5. 局限性
+
+- **无语义信息**：AST 不包含类型是否匹配、变量是否已定义等语义信息（这需要符号表和类型检查）。
+- **不支持所有扩展**：某些编译器特定语法（如 GCC 的 `__attribute__`）可能无法解析。
+- **宏处理困难**：宏在预处理阶段展开，原始 AST 中可能丢失宏结构。
+
+### 总结
+
+AST 是连接源代码与程序行为之间的桥梁。它将文本形式的代码转化为机器可处理的结构化数据，是现代软件开发工具链中不可或缺的一环。深入理解 AST 有助于你更好地掌握编译原理、编写代码分析工具，甚至开发自己的编程语言。
