@@ -33,7 +33,7 @@ anthropic Claude提出了关于一新范式skills的相关规范来扩展大模�
 
 ## 想法
 
-所以，我想实现一个skill系统，它能以非常简单的方式无缝提供给所有agent框架使用skill。同时各个skill文档内容也随着这个skill系统深度绑定，所有agent框架可以在使用skill的同时也能获取skill文档。
+所以，我实现了一个skill系统，它能以非常简单的方式无缝提供给所有agent框架使用skill。同时各个skill文档内容也随着这个skill系统深度绑定，所有agent框架可以在使用skill的同时也能获取skill文档。
 
 而要想实现上述。通过如下角度实现最为合适
 
