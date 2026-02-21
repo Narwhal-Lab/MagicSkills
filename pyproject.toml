@@ -1,54 +1,61 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.24.0"]
+build-backend = "hatchling.build"
 
 [project]
-name = "skills-for-all-agent"
-version = "0.1.1"
-description = "Lightweight skill loader and runner for agent function calling."
+name = "MagicSkills"
+version = "0.1.0"
+description = "Cross-platform skills manager and agent tool for SKILL.md-based skills."
 readme = "README.md"
-authors = [
-  { name = "LLK" }
-]
-keywords = ["agent", "skills", "tooling", "function-calling"]
-requires-python = ">=3.8"
-license = { text = "MIT" }
-
-dependencies = []
-
+requires-python = ">=3.10,<3.14"
+license = { file = "LICENSE" }
+keywords = ["skills", "agents", "claude", "openskills", "tooling"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
-  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Topic :: Software Development :: Libraries",
-  "Topic :: Software Development :: Libraries :: Python Modules"
+  "Programming Language :: Python :: 3.13",
 ]
 
-[project.urls]
-Homepage = "https://example.com"
-Repository = "https://example.com"
-Issues = "https://example.com/issues"
+dependencies = []
 
 [project.optional-dependencies]
-langchain = [
-  "langchain>=0.1.0",
-  "langchain-community>=0.1.0",
-  "pydantic>=2.0.0"
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+  "mypy>=1.10",
+  "build>=1.2",
+  "twine>=5.1",
 ]
 
-[tool.setuptools]
-packages = ["skills_for_all_agent"]
-license-files = []
+[project.scripts]
+magicskills = "magicskills.cli:main"
 
-[tool.setuptools.package-data]
-skills_for_all_agent = [
-  "skills/**/*",
+[tool.hatch.build]
+exclude = [
+  "src/magicskills/skills/**",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/magicskills"]
 
+[tool.ruff]
+line-length = 100
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+warn_no_return = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

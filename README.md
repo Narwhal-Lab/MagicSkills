@@ -1,61 +1,310 @@
-# Skills-For-All-Agent-首个无缝支持所有agent框架的skill系统
+# MagicSkills
 
-与**Claude Code**的skills system完全吻合的实现-同时不仅仅局限于**Claude Code的skills system，它 更轻量化 更兼容 更自由化 更生态化**
+一个跨平台的 Python 3.10/3.11/3.12/3.13 包，用于管理基于 `SKILL.md` 的 skills，并提供可直接接入 agent 的 tool function。
 
-## 这是什么
+## 特性
+- 兼容 Linux / Windows / macOS
+- 支持 Claude 风格 `<available_skills>` 输出
+- 支持 `AGENTS.md` 同步（`syncskills`）
+- 支持单 skill 操作 + skills 集合实例管理
+- 纯标准库实现（运行时无第三方依赖）
 
-一个python package 作为skills系统去无缝接轨所有agent框架，并将skill内容和agent使用skill能力绑定形成一个完整skill生态
+## Skill vs Skills
+- `Skill`：单个 skill 元数据对象（`name`、`description`、`path`、`base_dir`、`source`、`environment` 等）
+- `Skills`：`Skill` 集合管理器（发现、读取、执行、同步、增删、tool dispatch）
 
+## 项目结构
+```text
+src/magicskills/
+├── __init__.py          # 对外 API
+├── __main__.py          # python -m magicskills
+├── cli.py               # CLI 入口
+├── agent_tool/          # SkillTool 封装
+└── core/                # 核心业务
+    ├── skill.py
+    ├── skills.py
+    ├── registry.py
+    ├── installer.py
+    ├── agents_md.py
+    ├── models.py
+    └── utils.py
 ```
-pip install skills-for-all-agent
-from skills_for_all_agent.skill_tool import skill_tool,DEFAULT_SKILLS_ROOT
+
+## 安装
+```bash
+# 开发安装
+pip install -e .
+
+# 普通安装（发布后）
+pip install MagicSkills
 ```
 
-## 出发点
+解释器要求来自 `pyproject.toml`：`>=3.10,<3.14`。
 
-anthropic Claude提出了关于一新范式skills的相关规范来扩展大模型的功能 [Agent Skills ](https://code.claude.com/docs/en/skills)
+建议按目标解释器安装：
+```bash
+python3.10 -m pip install MagicSkills
+python3.11 -m pip install MagicSkills
+python3.12 -m pip install MagicSkills
+python3.13 -m pip install MagicSkills
+```
 
-但存在问题是我并没有寻找到anthropic Claude关于 模型是如何使用skills的代码实现。于是在阅读skills文档后，我决定自己实现一套skills系统来使得模型可以使用skills
+## 包含内容说明（重要）
+- wheel 构建只包含 Python 包代码：`src/magicskills`
+- `src/magicskills/skills/**` 已在 `pyproject.toml` 里排除，不会随 `pip install` 安装
+- skill 内容应通过 `magicskills install ...` 安装到本地目录
 
-期间我寻找了相关使用skill的实战与实现的资源
+## 默认搜索路径优先级
+1. `./.agent/skills/`（project universal）
+2. `~/.agent/skills/`（global universal）
+3. `./.claude/skills/`（project）
+4. `~/.claude/skills/`（global）
 
-1. agentscope 的skill实现[Agent Skill](https://doc.agentscope.io/tutorial/task_agent_skill.html#integrating-agent-skills-with-reactagent)
-2. anthropic sdk 的skill实战 [src/anthropic/resources/beta/skills](https://github.com/anthropics/anthropic-sdk-python/tree/main/src/anthropic/resources/beta/skills)
-3. claude-codebooks的skill实战  [skills](https://github.com/anthropics/claude-cookbooks/tree/main/skills)
-4. DeepAgents的 skill实现 [Using skills with Deep Agents](https://blog.langchain.com/using-skills-with-deep-agents/)
-5. openskills的skill实现 [Universal skills loader for AI coding agents - npm i -g openskills](https://github.com/numman-ali/openskills)
+## 快速开始
+```bash
+magicskills list
+magicskills readskill pdf
+magicskills execskill pdf -- "python3 scripts/example.py"
+magicskills syncskills -o AGENTS.md -y
+magicskills install c_2_ast
+magicskills uploadskill c_2_ast
+magicskills createskill my-skill
+```
 
-## 存在的问题
+## CLI 命令
+当前代码中的命令集合：
 
-但它们存在以下问题
+```text
+list
+readskill
+execskill
+syncskills
+install
+createskill
+uploadskill
+deleteskill
+showskill
+createskills
+listskills
+deleteskills
+addskill2skills
+changetooldescription
+skill-for-all-agent
+```
 
-1. 和agent框架高度耦合 并没有统一成一个一致的接口能面向所有agent框架使用
-2. 部分skills的实现并没有开发源码
-3. 关于各个skill文档内容 也并没有面向所有agent框架 也没有与skills实现深度绑定
-4. 没有以一个统一的 轻量化的方式提供给所有agent框架
-5. 冗余的不是python的外部软件生态 而大部分agent框架是由python完成的
-6. 强制在system prompt给出所有skill描述。而不是模型自主地去考虑是否要查看所有skill描述并使用skill
+### 单 skill 操作
+`magicskills list`  
+作用：列出 `Allskills` 中所有 skill（XML 输出）。
 
-## 想法
+`magicskills readskill <skill-name>`  
+作用：读取该 skill 目录下所有文件内容并格式化输出。
 
-所以，我实现了一个skill系统，它能以非常简单的方式无缝提供给所有agent框架使用skill。同时各个skill文档内容也随着这个skill系统深度绑定，所有agent框架可以在使用skill的同时也能获取skill文档。
+`magicskills execskill <skill-name> -- "<command>"`  
+作用：在 skill 目录上下文执行命令。  
+参数：`--no-shell`、`--json`、`--paths`
 
-而要想实现上述。通过如下角度实现最为合适
+`magicskills showskill <skill-name>`  
+作用：查看 skill 元数据。  
+参数：`--json`、`--paths`
 
-1. python package 形式。几乎所有agent框架使用python。以包的形式提供skill能力和skill文档，能够让agent框架上手即用
-2. 通过已有的所有agent框架的最通用的技术来实现这个skill能力。这样能保证所有agent框架都可以使用
+`magicskills createskill <skill-name>`  
+作用：创建标准 skill 骨架目录（`SKILL.md/references/scripts/assets`）。  
+参数：`--root`
 
-## 优点
+`magicskills deleteskill <skill-name>`  
+作用：删除指定 skill 目录。  
+参数：`--paths`
 
-1. 无缝兼容所有agent框架
-2. 建立在传统框架技术上
-3. 只需要pip3 install skills_for_all_agent 并提供给agent一个tool即可让agent使用skill
-4. 包中带有skill内容，所有通过pip3 install skills_for_all_agent后都可以通过自带的一个前端界面自动化生成自己想要的skill内容 或者上传自己的skill内容。
-5. agent使用skill时可以自动使用你以及生成的skill内容或者你上传的skill内容
-6. 不会强制在system prompt给它skill相关提示词。只用给它这个工具的描述。它便可以自主地决定是否要适用skills。
+`magicskills install <source>`  
+作用：从 GitHub shorthand / git URL / 本地目录安装 skill；也支持直接传 skill 名（默认仓库：`Narwhal-Lab/Skills-For-All-Agent`）。  
+参数：`--global`、`--universal`、`-t/--target`、`-y/--yes`  
+说明：`--target` 与 `--global/--universal` 互斥。
 
-## 交流
+示例：
+```bash
+magicskills install anthropics/skills --universal
+magicskills install c_2_ast
+magicskills install Narwhal-Lab/Skills-For-All-Agent
+magicskills install c_2_ast --target ./custom-skills
+```
 
-如果有不足的地方想提供建议或者想一起参与的大佬。 请扫码加入微信群。欢迎大家一起交流！！！
+`magicskills uploadskill <source>`  
+作用：上传 skill 到目标仓库（默认仓库：`Narwhal-Lab/Skills-For-All-Agent`，默认子目录：`skills_for_all_agent/skills`）。  
+`<source>` 支持：
+- `Allskills` 中 skill 名
+- 本地 skill 目录路径（目录内必须有 `SKILL.md`）
 
-![示例图片](image/f8a6f9fef45eedf1d6ba5adbbe03016a.jpg)
+不支持：
+- `SKILL.md` 文件路径
+
+参数：`--repo`、`--subdir`、`--branch`、`--message`、`--no-push`、`--yes`、`--json`
+
+示例：
+```bash
+magicskills uploadskill c_2_ast
+magicskills uploadskill ./my-skill
+magicskills uploadskill c_2_ast --repo git@github.com:Narwhal-Lab/Skills-For-All-Agent.git
+magicskills uploadskill c_2_ast --no-push --json
+```
+
+### skills 集合实例操作
+`magicskills createskills <instance-name>`  
+作用：创建命名 `Skills` 实例并持久化到注册表。  
+参数：`--paths`、`--tool-description`、`--agent-md-path`
+
+`magicskills listskills`  
+作用：列出所有命名实例。  
+参数：`--json`
+
+`magicskills deleteskills <instance-name>`  
+作用：删除命名实例（不删磁盘 skill 文件）。
+
+`magicskills addskill2skills <instance-name> <skill-name>`  
+作用：把该 skill 的 source 路径加入实例的搜索路径并刷新。  
+参数：`--from-paths`
+
+`magicskills changetooldescription <instance-name> "<description>"`  
+作用：修改实例 `tool_description`。
+
+`magicskills syncskills`  
+作用：把实例 skill 清单同步到 `AGENTS.md`（或自定义输出）。  
+参数：`-o/--output`、`-y/--yes`、`--paths`、`--name`
+
+`magicskills skill-for-all-agent <action> --arg "<arg>"`  
+作用：通过 CLI 调用 `Skill_For_All_Agent` 风格入口。  
+参数：`--name`、`--paths`
+
+命名实例持久化文件：`./.magicskills/collections.json`
+
+## 作为 agent 的 tool function
+### 方案 1：函数式入口（推荐）
+```python
+from magicskills import Skill_For_All_Agent
+
+print(Skill_For_All_Agent("listskill", ""))
+print(Skill_For_All_Agent("readskill", "pdf"))
+print(Skill_For_All_Agent("execskill", "pdf::python3 scripts/example.py"))
+
+# 指定命名 skills 实例（例如 createskills 创建的 team-a）
+print(Skill_For_All_Agent("readskill", "pdf", name="team-a"))
+```
+
+### 方案 2：对象入口（SkillTool）
+```python
+from magicskills import SkillTool
+
+tool = SkillTool()
+print(tool.handle({"action": "listskill", "arg": ""}))
+print(tool.handle({"action": "readskill", "arg": "pdf"}))
+print(tool.handle({"action": "execskill", "arg": "pdf::python3 scripts/example.py"}))
+```
+
+## 公共 Python API（`magicskills.__init__`）
+可直接调用：
+- `Skill_For_All_Agent`（支持 `name=<instance-name>` 指定实例）
+- `createskills` / `listskills` / `deleteskills`
+- `syncskills` / `addskill2skills` / `changetooldescription`
+- `listskill` / `showskill` / `createskill` / `deleteskill`
+- `installskill` / `uploadskill`
+
+## SKILL.md 示例
+```markdown
+---
+description: 示例 skill
+environment:
+  PYTHONPATH: "."
+---
+
+这里是详细说明...
+```
+
+## 开发
+```bash
+pytest -q tests
+ruff check .
+mypy src/magicskills
+```
+
+## 打包与发布前检查
+```bash
+python -m pip install -U build twine
+python -m build
+twine check dist/*
+```
+
+可选 wheel 验证：
+```bash
+python -m pip install dist/*.whl
+magicskills --help
+```
+
+多版本验证（需本机安装对应解释器）：
+```bash
+python -m pip install -U tox
+tox
+```
+
+
+(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# magicskills install -h
+usage: magicskills install [-h] [--global] [--universal] [-t TARGET] [-y] source
+
+positional arguments:
+  source                GitHub repo (owner/repo), git URL, local path, or skill name
+
+options:
+  -h, --help            show this help message and exit
+  --global              Install to global scope
+  --universal           Install to .agent/skills
+  -t TARGET, --target TARGET
+                        Custom install target directory (cannot be used with --global/--universal)
+  -y, --yes             Overwrite without prompt
+
+
+
+py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# magicskills install c_2_ast
+Cloning into '/tmp/tmpt884bzpr'...
+remote: Enumerating objects: 300, done.
+remote: Counting objects: 100% (300/300), done.
+remote: Compressing objects: 100% (227/227), done.
+remote: Total 300 (delta 67), reused 287 (delta 65), pack-reused 0 (from 0)
+Receiving objects: 100% (300/300), 3.15 MiB | 362.00 KiB/s, done.
+Resolving deltas: 100% (67/67), done.
+Installed: /root/LLK/MagicSkills/.claude/skills/c_2_ast
+(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# ls /root/LLK/MagicSkills/.claude/skills/c_2_ast
+SKILL.md  reference.md  scripts
+
+(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills#  magicskills install c_2_ast --global
+Cloning into '/tmp/tmpdb1epnrs'...
+remote: Enumerating objects: 300, done.
+remote: Counting objects: 100% (300/300), done.
+remote: Compressing objects: 100% (227/227), done.
+remote: Total 300 (delta 67), reused 287 (delta 65), pack-reused 0 (from 0)
+Receiving objects: 100% (300/300), 3.15 MiB | 142.00 KiB/s, done.
+Resolving deltas: 100% (67/67), done.
+Installed: /root/.claude/skills/c_2_ast
+(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# ls /root/.claude/skills/c_2_ast
+SKILL.md  reference.md  scripts
+
+(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills#  magicskills install c_2_ast --universal
+Cloning into '/tmp/tmpjo2l5u3x'...
+remote: Enumerating objects: 300, done.
+remote: Counting objects: 100% (300/300), done.
+remote: Compressing objects: 100% (227/227), done.
+remote: Total 300 (delta 67), reused 287 (delta 65), pack-reused 0 (from 0)
+Receiving objects: 100% (300/300), 3.15 MiB | 1.13 MiB/s, done.
+Resolving deltas: 100% (67/67), done.
+Installed: /root/LLK/MagicSkills/.agent/skills/c_2_ast
+(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# ls /root/LLK/MagicSkills/.agent/skills/c_2_ast
+SKILL.md  reference.md  scripts
+
+(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# magicskills install c_2_ast --universal   --global
+Cloning into '/tmp/tmp4dsu1ezy'...
+remote: Enumerating objects: 300, done.
+remote: Counting objects: 100% (300/300), done.
+remote: Compressing objects: 100% (227/227), done.
+remote: Total 300 (delta 67), reused 287 (delta 65), pack-reused 0 (from 0)
+Receiving objects: 100% (300/300), 3.15 MiB | 1.10 MiB/s, done.
+Resolving deltas: 100% (67/67), done.
+Installed: /root/.agent/skills/c_2_ast
+(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# ls /root/.agent/skills/c_2_ast
+SKILL.md  reference.md  scripts

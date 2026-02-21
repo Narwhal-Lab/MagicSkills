@@ -1,0 +1,14 @@
+{
+  "collections": {
+    "team-a": {
+      "paths": [
+        "/root/LLK/MagicSkills/.agent/skills",
+        "/root/.agent/skills",
+        "/root/LLK/MagicSkills/.claude/skills",
+        "/root/.claude/skills"
+      ],
+      "tool_description": "Skill_For_All_Agent(\"readskill <skill-name>\")",
+      "agent_md_path": "AGENTS.md"
+    }
+  }
+}

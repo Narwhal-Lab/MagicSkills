@@ -1,6 +1,11 @@
 # 忽略任意层级下的 .env 文件
 .env
 **/.env
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
 dist/
+build/
 pack.sh
 *.egg-info/
