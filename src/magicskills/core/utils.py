@@ -130,8 +130,8 @@ def extract_skill_metadata(content: str) -> tuple[dict[str, Any], str, str | Non
     return fm, description, context, environment
 
 
-def detect_location(source: Path) -> tuple[bool, bool, str]:
-    """Return (is_global, is_universal, location_label)."""
+def detect_location(source: Path) -> tuple[bool, bool]:
+    """Return (is_global, is_universal)."""
     home = Path.home().resolve()
     cwd = Path.cwd().resolve()
     source_resolved = source.expanduser().resolve()
@@ -139,8 +139,7 @@ def detect_location(source: Path) -> tuple[bool, bool, str]:
     is_project = str(source_resolved).startswith(str(cwd))
     is_global = not is_project and str(source_resolved).startswith(str(home))
     is_universal = ".agent" in source.parts
-    location = "global" if is_global else "project"
-    return is_global, is_universal, location
+    return is_global, is_universal
 
 
 def normalize_paths(paths: Iterable[Path | str]) -> list[Path]:
@@ -150,16 +149,6 @@ def normalize_paths(paths: Iterable[Path | str]) -> list[Path]:
         path = Path(p).expanduser()
         result.append(path)
     return result
-
-
-def env_with_skill_context(base_env: dict[str, str], skill_name: str, base_dir: Path, path: Path, source: Path) -> dict[str, str]:
-    """Inject skill-scoped environment variables for command execution."""
-    env = dict(base_env)
-    env.setdefault("SKILL_NAME", skill_name)
-    env.setdefault("SKILL_BASE_DIR", str(base_dir))
-    env.setdefault("SKILL_PATH", str(path))
-    env.setdefault("SKILLS_SOURCE_DIR", str(source))
-    return env
 
 
 def is_git_url(source: str) -> bool:

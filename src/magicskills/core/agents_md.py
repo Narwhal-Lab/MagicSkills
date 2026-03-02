@@ -18,13 +18,15 @@ def parse_current_skills(content: str) -> list[str]:
 
 def generate_skills_xml(skills: Iterable[Skill], invocation: str) -> str:
     """Generate the `<skills_system>` XML block for AGENTS.md."""
+    _ = invocation
     skill_tags = []
     for skill in skills:
+        location = "global" if skill.is_global else "project"
         skill_tags.append(
             "<skill>\n"
             f"<name>{skill.name}</name>\n"
             f"<description>{skill.description}</description>\n"
-            f"<location>{skill.location}</location>\n"
+            f"<location>{location}</location>\n"
             "</skill>"
         )
     skills_block = "\n\n".join(skill_tags)
@@ -34,15 +36,14 @@ def generate_skills_xml(skills: Iterable[Skill], invocation: str) -> str:
         "## Available Skills\n\n"
         "<!-- SKILLS_TABLE_START -->\n"
         "<usage>\n"
-        "When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.\n\n"
+        "When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively.\n\n"
         "How to use skills:\n"
-        f"- Invoke: {invocation}\n"
-        "- The skill content will load with detailed instructions on how to complete the task\n"
-        "- Base directory provided in output for resolving bundled resources (references/, scripts/, assets/)\n\n"
+        "- Invoke: `npx openskills read <skill-name>` (run in your shell)\n"
+        "- The skill content will load with detailed instructions\n"
+        "- Base directory provided in output for resolving bundled resources\n\n"
         "Usage notes:\n"
         "- Only use skills listed in <available_skills> below\n"
         "- Do not invoke a skill that is already loaded in your context\n"
-        "- Each skill invocation is stateless\n"
         "</usage>\n\n"
         "<available_skills>\n\n"
         f"{skills_block}\n\n"

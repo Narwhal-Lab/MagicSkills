@@ -19,12 +19,20 @@ from .models import ExecResult
 from .skill import Skill
 from .utils import (
     detect_location,
-    env_with_skill_context,
     extract_skill_metadata,
     get_search_dirs,
     is_directory_or_symlink_to_directory,
     normalize_paths,
     read_text,
+)
+
+DEFAULT_TOOL_DESCRIPTION = (
+    'Unified skill tool. If you are not sure, you can first use the "list_metadata" '
+    "function of this tool to search for available skills. Then, determine which skill "
+    "might be the most useful. After that, try to read the SKILL.md file under this "
+    "skill path to get more detailed information. Finally, based on the content of this "
+    "file, decide whether to read the documentation in other paths or directly execute "
+    "the relevant script."
 )
 
 
@@ -66,15 +74,62 @@ def _read_skill_files(base_dir: Path) -> list[tuple[str, str]]:
     return files
 
 
+def _format_skill_list(skills: list[Skill]) -> str:
+    """Format skills for CLI list output."""
+    if not skills:
+        return "No skills found."
+    ordered = sorted(skills, key=lambda s: (s.name.lower(), s.path.as_posix()))
+    lines: list[str] = []
+    for index, skill in enumerate(ordered, start=1):
+        lines.append(f"{index}. name: {skill.name}")
+        lines.append(f"   description: {skill.description}")
+        lines.append(f"   path: {skill.path}")
+    return "\n".join(lines)
+
+
+def _format_show_skill_output(skill: Skill, files: list[tuple[str, str]]) -> str:
+    """Format one skill's full content in a human-friendly layout."""
+    line = "=" * 88
+    split = "-" * 88
+    lines = [
+        line,
+        f"Skill: {skill.name}",
+        f"Description: {skill.description}",
+        f"Base directory: {skill.base_dir}",
+        f"SKILL.md path: {skill.path}",
+        f"Source path: {skill.source}",
+        split,
+    ]
+
+    if skill.environment:
+        lines.append("Environment:")
+        for key, value in sorted(skill.environment.items()):
+            lines.append(f"  {key}={value}")
+    else:
+        lines.append("Environment: (none)")
+    lines.append(split)
+
+    lines.append(f"Files ({len(files)}):")
+    for index, (rel_path, content) in enumerate(files, start=1):
+        lines.append("")
+        lines.append(f"[{index}/{len(files)}] {rel_path}")
+        lines.append(split)
+        lines.append(content if content else "(empty file)")
+
+    lines.append("")
+    lines.append(line)
+    return "\n".join(lines)
+
+
 def discover_skills(paths: Iterable[Path]) -> list[Skill]:
-    """Scan paths and discover unique skills by folder name.
+    """Scan paths and discover unique skills by resolved base_dir.
 
     Each path may be either:
     - a skills root containing multiple skill directories
     - a single skill directory that directly contains SKILL.md
     """
     skills: list[Skill] = []
-    seen: set[str] = set()
+    seen_base_dirs: set[Path] = set()
 
     for root in paths:
         if not root.exists():
@@ -88,18 +143,18 @@ def discover_skills(paths: Iterable[Path]) -> list[Skill]:
         for entry in candidates:
             if not is_directory_or_symlink_to_directory(entry):
                 continue
-            name = entry.name
-            if name in seen:  # 万一有同名的但是内容不同的技能，先遇到的优先，那如果也要加入进去怎么办？
+            resolved_entry = entry.expanduser().resolve()
+            if resolved_entry in seen_base_dirs:
                 continue
             skill_md = entry / "SKILL.md"
             if not skill_md.exists():
                 continue
             content = read_text(skill_md)
             frontmatter, description, context, environment = extract_skill_metadata(content)
-            is_global, universal, location = detect_location(root)
+            is_global, universal = detect_location(root)
             skills.append(
                 Skill(
-                    name=name,
+                    name=entry.name,
                     description=description,
                     path=skill_md,
                     base_dir=entry,
@@ -107,12 +162,11 @@ def discover_skills(paths: Iterable[Path]) -> list[Skill]:
                     context=context,
                     is_global=is_global,
                     universal=universal,
-                    location=location,
                     environment=environment,
                     frontmatter=frontmatter,
                 )
             )
-            seen.add(name)
+            seen_base_dirs.add(resolved_entry)
 
     return skills
 
@@ -131,7 +185,7 @@ class Skills:
         self.name = name  # 该Skills的名字
         self.paths = normalize_paths(paths) if paths is not None else get_search_dirs() # 得到该skills对应的skill的所在路径
         self._skills = list(skills) if skills is not None else discover_skills(self.paths)
-        self.tool_description = tool_description or "Skill_For_All_Agent(\"readskill <skill-name>\")"
+        self.tool_description = tool_description or DEFAULT_TOOL_DESCRIPTION
         self.agent_md_path = Path(agent_md_path) if agent_md_path else Path("AGENTS.md")
 
     @property
@@ -139,63 +193,139 @@ class Skills:
         """Return a copy of internal skill list."""
         return list(self._skills) # 返回一个复制
 
-    def refresh(self) -> None:
-        """Reload skills from configured paths."""
-        self._skills = discover_skills(self.paths)
+    def get_skill(self, name: str, base_dir: Path | str | None = None) -> Skill:
+        """Get one skill by name and optional base_dir.
 
-    def get_skill(self, name: str) -> Skill:
-        """Get one skill by name or raise KeyError."""
-        for skill in self._skills:
-            if skill.name == name:
-                return skill
-        raise KeyError(f"Skill '{name}' not found")
+        When multiple skills share the same name, `base_dir` is required.
+        """
+        if base_dir is not None:
+            target_base_dir = Path(base_dir).expanduser().resolve()
+            for skill in self._skills:
+                if skill.name != name:
+                    continue
+                if skill.base_dir.expanduser().resolve() == target_base_dir:
+                    return skill
+            raise KeyError(f"Skill '{name}' not found at base_dir '{target_base_dir}'")
+
+        matches = [skill for skill in self._skills if skill.name == name]
+        if not matches:
+            raise KeyError(f"Skill '{name}' not found")
+        if len(matches) > 1:
+            options = ", ".join(str(skill.base_dir) for skill in matches)
+            raise KeyError(f"Multiple skills named '{name}' found. Provide base_dir. Candidates: {options}")
+        return matches[0]
 
     def add_skill(self, skill: Skill) -> None:
-        """Add one skill object into this collection."""
-        if any(s.name == skill.name for s in self._skills):
-            raise ValueError(f"Skill '{skill.name}' already exists in this collection")
+        """Add one skill object into this collection.
+
+        Uniqueness is based on `base_dir`, not only on name.
+        """
+        skill_base_dir = skill.base_dir.expanduser().resolve()
+        if any(s.base_dir.expanduser().resolve() == skill_base_dir for s in self._skills):
+            raise ValueError(f"Skill at base_dir '{skill.base_dir}' already exists in this collection")
         self._skills.append(skill)
 
-    def remove_skill(self, name: str) -> None:
-        """Remove one skill by name from this collection."""
-        before = len(self._skills)
-        self._skills = [s for s in self._skills if s.name != name]
-        if len(self._skills) == before:
+    def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
+        """Remove one skill by base_dir or by unique name.
+
+        If `name` matches multiple skills, pass `base_dir` to disambiguate.
+        """
+        if name is None and base_dir is None:
+            raise ValueError("remove_skill requires at least one of: name, base_dir")
+
+        if base_dir is not None:
+            target_base_dir = Path(base_dir).expanduser().resolve()
+            kept: list[Skill] = []
+            removed = False
+            for skill in self._skills:
+                same_base_dir = skill.base_dir.expanduser().resolve() == target_base_dir
+                same_name = name is None or skill.name == name
+                if same_base_dir and same_name:
+                    removed = True
+                    continue
+                kept.append(skill)
+            if not removed:
+                if name is None:
+                    raise KeyError(f"Skill at base_dir '{target_base_dir}' not found")
+                raise KeyError(f"Skill '{name}' not found at base_dir '{target_base_dir}'")
+            self._skills = kept
+            return
+
+        assert name is not None
+        matches = [skill for skill in self._skills if skill.name == name]
+        if not matches:
             raise KeyError(f"Skill '{name}' not found")
+        if len(matches) > 1:
+            options = ", ".join(str(skill.base_dir) for skill in matches)
+            raise ValueError(f"Multiple skills named '{name}' found. Provide base_dir. Candidates: {options}")
+        target_base_dir = matches[0].base_dir.expanduser().resolve()
+        self._skills = [skill for skill in self._skills if skill.base_dir.expanduser().resolve() != target_base_dir]
 
     def listskill(self) -> str:
-        """Render available skills as XML block."""
-        return generate_skills_xml(self._skills, invocation=self.tool_description)
+        """Render available skills as simple text list."""
+        return _format_skill_list(self._skills)
 
-    def readskill(self, name: str) -> str:
-        """Read and format all files under one skill directory."""
-        skill = self.get_skill(name)
+    def readskill(self, file_path: str | Path) -> str:
+        """Read only the file content specified by path."""
+        path = Path(file_path).expanduser()
+        if not path.exists():
+            raise FileNotFoundError(f"readskill path not found: {path}")
+        if not path.is_file():
+            raise ValueError(f"readskill expects a file path, got: {path}")
+        return read_text(path)
+
+    def showskill(self, name: str, base_dir: Path | str | None = None) -> str:
+        """Show one skill with beautified metadata + full file contents."""
+        skill = self.get_skill(name, base_dir=base_dir)
         files = _read_skill_files(skill.base_dir)
-        return SkillReadResult(name=skill.name, base_dir=skill.base_dir, files=files).to_output()
+        return _format_show_skill_output(skill, files)
+
+    def _collection_environment(self) -> dict[str, str]:
+        """Merge environment mappings from all skills in this collection."""
+        merged: dict[str, str] = {}
+        for collection_skill in sorted(self._skills, key=lambda s: s.base_dir.as_posix()):
+            merged.update(collection_skill.environment)
+        return merged
 
     def execskill(
         self,
-        name: str,
         command: str,
         env: Mapping[str, str] | None = None,
         shell: bool = True,
         timeout: float | None = None,
+        stream: bool = False,
     ) -> ExecResult:
-        """Execute shell command inside target skill context."""
-        skill = self.get_skill(name)
-        merged_env = env_with_skill_context(os.environ.copy(), skill.name, skill.base_dir, skill.path, skill.source)
+        """Execute shell command in current cwd with merged collection environment variables."""
+        if not command.strip():
+            raise ValueError("execskill requires a command string")
+        merged_env = os.environ.copy()
+        merged_env.update(self._collection_environment())
         if env:
             merged_env.update(env)
-        merged_env.update(skill.environment)
 
         if shell:
             cmd = command
         else:
             cmd = shlex.split(command)
+        if stream:
+            completed = subprocess.run(
+                cmd,
+                shell=shell,
+                cwd=Path.cwd(),
+                env=merged_env,
+                timeout=timeout,
+            )
+            return ExecResult(
+                command=command,
+                returncode=completed.returncode,
+                stdout="",
+                stderr="",
+            )
+
         completed = subprocess.run(
             cmd,
             shell=shell,
-            cwd=skill.base_dir,
+            cwd=Path.cwd(),
             env=merged_env,
             capture_output=True,
             text=True,
@@ -231,60 +361,31 @@ class Skills:
             if action_lower in {"listskill", "list", "list_metadata"}:
                 return {"ok": True, "action": action, "result": self.listskill()}
             if action_lower in {"readskill", "read", "read_file"}:
-                if arg and Path(arg).exists():
-                    return {"ok": True, "action": action, "result": read_text(Path(arg))}
                 return {"ok": True, "action": action, "result": self.readskill(arg)}
             if action_lower in {"execskill", "exec", "run_command"}:
-                if action_lower == "run_command" and not _has_skill_prefix(arg):
-                    result = _exec_plain(arg)
-                    return {"ok": True, "action": action, "result": result.__dict__}
-                name, command = _parse_exec_arg(arg)
-                result = self.execskill(name, command)
+                command = _parse_exec_command(arg)
+                result = self.execskill(command)
                 return {"ok": True, "action": action, "result": result.__dict__}
             return {"ok": False, "error": f"Unknown action: {action}"}
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
 
 
-def _parse_exec_arg(arg: str) -> tuple[str, str]:
-    """Parse `execskill` arg from `name::command` or JSON."""
+def _parse_exec_command(arg: str) -> str:
+    """Parse command for execskill/run_command from plain text, JSON, or legacy `name::command`."""
     if not arg:
-        raise ValueError("execskill requires arg format: <skill-name>::<command> or JSON")
+        raise ValueError("execskill requires a non-empty command")
     trimmed = arg.strip()
     if trimmed.startswith("{"):
         payload = json.loads(trimmed)
-        name = payload.get("name")
         command = payload.get("command")
-        if not name or not command:
-            raise ValueError("execskill JSON must include 'name' and 'command'")
-        return str(name), str(command)
+        if not command:
+            raise ValueError("execskill JSON must include 'command'")
+        return str(command)
     if "::" in trimmed:
-        name, command = trimmed.split("::", 1)
-        return name.strip(), command.strip()
-    raise ValueError("execskill requires arg format: <skill-name>::<command> or JSON")
-
-
-def _has_skill_prefix(arg: str) -> bool:
-    """Check if command arg explicitly includes skill prefix format."""
-    trimmed = arg.strip()
-    return trimmed.startswith("{") or "::" in trimmed
-
-
-def _exec_plain(command: str) -> ExecResult:
-    """Execute plain shell command in current working directory."""
-    if not command.strip():
-        raise ValueError("run_command requires a command string")
-    completed = subprocess.run(
-        command,
-        shell=True,
-        cwd=Path.cwd(),
-        env=os.environ.copy(),
-        capture_output=True,
-        text=True,
-    )
-    return ExecResult(
-        command=command,
-        returncode=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
-    )
+        _, command = trimmed.split("::", 1)
+        command = command.strip()
+        if not command:
+            raise ValueError("execskill legacy arg requires command after '::'")
+        return command
+    return trimmed

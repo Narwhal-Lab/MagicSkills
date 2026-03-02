@@ -119,6 +119,7 @@ skill-for-all-agent
 作用：从 GitHub shorthand / git URL / 本地目录安装 skill；也支持直接传 skill 名（默认仓库：`Narwhal-Lab/Skills-For-All-Agent`）。  
 参数：`--global`、`--universal`、`-t/--target`、`-y/--yes`  
 说明：`--target` 与 `--global/--universal` 互斥。
+说明：安装完成后，会把安装得到的 skill 同步到 `Allskills`，并把每个 skill 的 `base_dir` 加入 `Allskills.paths`。
 
 示例：
 ```bash
@@ -243,68 +244,3 @@ magicskills --help
 python -m pip install -U tox
 tox
 ```
-
-
-(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# magicskills install -h
-usage: magicskills install [-h] [--global] [--universal] [-t TARGET] [-y] source
-
-positional arguments:
-  source                GitHub repo (owner/repo), git URL, local path, or skill name
-
-options:
-  -h, --help            show this help message and exit
-  --global              Install to global scope
-  --universal           Install to .agent/skills
-  -t TARGET, --target TARGET
-                        Custom install target directory (cannot be used with --global/--universal)
-  -y, --yes             Overwrite without prompt
-
-
-
-py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# magicskills install c_2_ast
-Cloning into '/tmp/tmpt884bzpr'...
-remote: Enumerating objects: 300, done.
-remote: Counting objects: 100% (300/300), done.
-remote: Compressing objects: 100% (227/227), done.
-remote: Total 300 (delta 67), reused 287 (delta 65), pack-reused 0 (from 0)
-Receiving objects: 100% (300/300), 3.15 MiB | 362.00 KiB/s, done.
-Resolving deltas: 100% (67/67), done.
-Installed: /root/LLK/MagicSkills/.claude/skills/c_2_ast
-(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# ls /root/LLK/MagicSkills/.claude/skills/c_2_ast
-SKILL.md  reference.md  scripts
-
-(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills#  magicskills install c_2_ast --global
-Cloning into '/tmp/tmpdb1epnrs'...
-remote: Enumerating objects: 300, done.
-remote: Counting objects: 100% (300/300), done.
-remote: Compressing objects: 100% (227/227), done.
-remote: Total 300 (delta 67), reused 287 (delta 65), pack-reused 0 (from 0)
-Receiving objects: 100% (300/300), 3.15 MiB | 142.00 KiB/s, done.
-Resolving deltas: 100% (67/67), done.
-Installed: /root/.claude/skills/c_2_ast
-(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# ls /root/.claude/skills/c_2_ast
-SKILL.md  reference.md  scripts
-
-(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills#  magicskills install c_2_ast --universal
-Cloning into '/tmp/tmpjo2l5u3x'...
-remote: Enumerating objects: 300, done.
-remote: Counting objects: 100% (300/300), done.
-remote: Compressing objects: 100% (227/227), done.
-remote: Total 300 (delta 67), reused 287 (delta 65), pack-reused 0 (from 0)
-Receiving objects: 100% (300/300), 3.15 MiB | 1.13 MiB/s, done.
-Resolving deltas: 100% (67/67), done.
-Installed: /root/LLK/MagicSkills/.agent/skills/c_2_ast
-(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# ls /root/LLK/MagicSkills/.agent/skills/c_2_ast
-SKILL.md  reference.md  scripts
-
-(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# magicskills install c_2_ast --universal   --global
-Cloning into '/tmp/tmp4dsu1ezy'...
-remote: Enumerating objects: 300, done.
-remote: Counting objects: 100% (300/300), done.
-remote: Compressing objects: 100% (227/227), done.
-remote: Total 300 (delta 67), reused 287 (delta 65), pack-reused 0 (from 0)
-Receiving objects: 100% (300/300), 3.15 MiB | 1.10 MiB/s, done.
-Resolving deltas: 100% (67/67), done.
-Installed: /root/.agent/skills/c_2_ast
-(py310) root@LAPTOP-U6QIR4FN:~/LLK/MagicSkills# ls /root/.agent/skills/c_2_ast
-SKILL.md  reference.md  scripts

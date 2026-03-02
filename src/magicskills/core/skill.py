@@ -19,7 +19,6 @@ class Skill:
     context: str | None = None
     is_global: bool = False
     universal: bool = False
-    location: str = "project"
     environment: Mapping[str, str] = field(default_factory=dict)
     frontmatter: Mapping[str, Any] = field(default_factory=dict)
 
@@ -34,7 +33,7 @@ class Skill:
             "path": str(self.path),
             "baseDir": str(self.base_dir),
             "source": str(self.source),
-            "location": self.location,
+            "location": "global" if self.is_global else "project",
             "environment": dict(self.environment),
             "frontmatter": dict(self.frontmatter),
         }

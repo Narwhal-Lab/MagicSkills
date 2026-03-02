@@ -1,6 +1,6 @@
 """Core domain layer for MagicSkills."""
 
-from .installer import UploadResult, create_skill, delete_skill, install_skills, show_skill, upload_skill
+from .installer import UploadResult, create_skill, delete_skill, install, install_skills, show_skill, upload_skill
 from .models import ExecResult
 from .registry import REGISTRY, SkillsRegistry
 from .skill import Skill
@@ -13,6 +13,7 @@ __all__ = [
     "ExecResult",
     "SkillsRegistry",
     "REGISTRY",
+    "install",
     "install_skills",
     "upload_skill",
     "UploadResult",

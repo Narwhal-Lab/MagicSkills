@@ -16,7 +16,7 @@ from .core.installer import (
     DEFAULT_SKILL_SUBDIR,
     create_skill,
     delete_skill,
-    install_skills,
+    install,
     show_skill,
     upload_skill,
 )
@@ -99,15 +99,25 @@ def addskill2skills(name: str, skill: Skill) -> None:
     REGISTRY.save_instance(name)
 
 
-def deleteskill(skill_name: str, skills_instance: str | None = None, paths: list[str] | None = None) -> str:
+def deleteskill(
+    skill_name: str | None = None,
+    skills_instance: str | None = None,
+    paths: list[str] | None = None,
+    base_dir: str | None = None,
+) -> str:
     """Delete a skill from a collection or remove it from filesystem."""
     if skills_instance:
+        if skill_name is None:
+            raise ValueError("deleteskill with skills_instance requires skill_name")
         instance = REGISTRY.get(skills_instance)
-        instance.remove_skill(skill_name)
+        instance.remove_skill(name=skill_name, base_dir=base_dir)
         REGISTRY.save_instance(skills_instance)
         return skill_name
-    deleted_path = delete_skill(skill_name, paths=paths)
-    ALL_SKILLS.refresh()
+    if base_dir is not None:
+        delete_paths = [Path(base_dir).expanduser()]
+    else:
+        delete_paths = paths
+    deleted_path = delete_skill(skill_name, paths=delete_paths)
     return str(deleted_path)
 
 
@@ -130,15 +140,14 @@ def installskill(
     yes: bool = False,
     target: str | None = None,
 ) -> list[str]:
-    """Install skills from source and refresh default collection."""
-    paths = install_skills(
+    """Install skills from source and merge installed skills into default collection."""
+    paths = install(
         source,
         global_=global_,
         universal=universal,
         yes=yes,
         target_root=Path(target).expanduser() if target else None,
     )
-    ALL_SKILLS.refresh()
     return [str(p) for p in paths]
 
 
@@ -150,6 +159,11 @@ def uploadskill(
     yes: bool = False,
     push: bool = True,
     message: str | None = None,
+    fork_repo: str | None = None,
+    push_branch: str | None = None,
+    create_pr: bool = False,
+    pr_title: str | None = None,
+    pr_body: str | None = None,
 ) -> dict[str, object]:
     """Upload one skill from local directory or Allskills to a target repository."""
     result = upload_skill(
@@ -160,17 +174,21 @@ def uploadskill(
         yes=yes,
         push=push,
         commit_message=message,
+        fork_repo=fork_repo,
+        push_branch=push_branch,
+        create_pr=create_pr,
+        pr_title=pr_title,
+        pr_body=pr_body,
     )
     return result.__dict__
 
 
-def showskill(name: str, paths: list[str] | None = None) -> dict[str, object]:
-    """Return metadata for one skill."""
-    return show_skill(name, paths=paths)
+def showskill(name: str, paths: list[str] | None = None, base_dir: str | None = None) -> str:
+    """Return full readable content for one skill from Allskills."""
+    return show_skill(name, paths=paths, base_dir=Path(base_dir).expanduser() if base_dir else None)
 
 
 def createskill(name: str, root: str | None = None) -> str:
-    """Create a skill scaffold directory and refresh default collection."""
+    """Create a skill scaffold directory and register it into default collection."""
     path = create_skill(name, target_root=Path(root).expanduser() if root else None)
-    ALL_SKILLS.refresh()
     return str(path)
