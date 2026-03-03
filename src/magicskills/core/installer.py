@@ -16,11 +16,11 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .registry import ALL_SKILLS
-from .skills import discover_skills
+from .skills import SOURCE_META_FILENAME, discover_skills, write_skill_source_metadata
 from .utils import is_directory_or_symlink_to_directory, is_git_url, is_repo_shorthand
 
 
-IGNORE_PATTERNS = shutil.ignore_patterns(".git", "__pycache__", "*.pyc")
+IGNORE_PATTERNS = shutil.ignore_patterns(".git", "__pycache__", "*.pyc", SOURCE_META_FILENAME)
 DEFAULT_SKILL_REPO = "https://github.com/Narwhal-Lab/Skills-For-All-Agent.git"
 DEFAULT_SKILL_SUBDIR = Path("skills_for_all_agent") / "skills"
 
@@ -290,6 +290,25 @@ def _default_push_branch(skill_name: str) -> str:
     return f"magicskills/{safe_name}-{int(time.time())}"
 
 
+def _skill_dir_of(skill: object) -> Path:
+    """Resolve skill directory from Skill-like objects (path or legacy base_dir)."""
+    raw_path = getattr(skill, "path", None)
+    if raw_path is None:
+        raw_path = getattr(skill, "base_dir", None)
+    if raw_path is None:
+        raise AttributeError("Skill object must provide `path` or `base_dir`")
+    return Path(raw_path).expanduser().resolve()
+
+
+def _remove_skill_compat(skills_collection: object, *, name: str | None = None, path: Path) -> None:
+    """Call remove_skill with new path API and fallback to legacy base_dir API."""
+    remove_skill = getattr(skills_collection, "remove_skill")
+    try:
+        remove_skill(name=name, path=path)
+    except TypeError:
+        remove_skill(name=name, base_dir=path)
+
+
 def resolve_install_root(global_: bool, universal: bool, cwd: Path | None = None) -> Path:
     """Resolve install directory based on scope and mode flags."""
     base = Path.home() if global_ else (cwd or Path.cwd())
@@ -348,7 +367,7 @@ def _collect_skill_dirs(source_dir: Path, skill_name: str | None = None) -> list
     return skills
 
 
-def _copy_skill_dir(skill_dir: Path, target_root: Path, yes: bool) -> Path:
+def _copy_skill_dir(skill_dir: Path, target_root: Path, yes: bool, source: str) -> Path:
     """Copy one skill directory into target root with overwrite policy."""
     target_root.mkdir(parents=True, exist_ok=True)
     target_path = target_root / skill_dir.name
@@ -357,6 +376,7 @@ def _copy_skill_dir(skill_dir: Path, target_root: Path, yes: bool) -> Path:
             raise FileExistsError(f"Skill '{skill_dir.name}' already exists at {target_path}")
         shutil.rmtree(target_path)
     shutil.copytree(skill_dir, target_path, ignore=IGNORE_PATTERNS)
+    write_skill_source_metadata(target_path, source=source)
     return target_path
 
 
@@ -365,13 +385,13 @@ def _resolve_skill_source(source: str) -> Path:
     def _resolve_by_name(skill_name: str) -> Path:
         matches = [skill for skill in ALL_SKILLS.skills if skill.name == skill_name]
         if len(matches) > 1:
-            candidates = ", ".join(str(skill.base_dir) for skill in matches)
+            candidates = ", ".join(str(_skill_dir_of(skill)) for skill in matches)
             raise ValueError(
                 f"Skill name '{skill_name}' has multiple matches in Allskills. "
                 f"Please pass the skill directory path as source. Candidates: {candidates}"
             )
         if len(matches) == 1:
-            return matches[0].base_dir
+            return _skill_dir_of(matches[0])
         raise KeyError(skill_name)
 
     value = source.strip()
@@ -389,7 +409,7 @@ def _resolve_skill_source(source: str) -> Path:
         discovered = discover_skills(ALL_SKILLS.paths)
         for skill in discovered:
             try:
-                ALL_SKILLS.remove_skill(base_dir=skill.base_dir)
+                _remove_skill_compat(ALL_SKILLS, path=skill.path)
             except (KeyError, ValueError):
                 pass
             ALL_SKILLS.add_skill(skill)
@@ -575,7 +595,7 @@ def _sync_installed_paths_to_allskills(installed: list[Path]) -> None:
 
     for skill in installed_skills:
         try:
-            ALL_SKILLS.remove_skill(base_dir=skill.base_dir)
+            _remove_skill_compat(ALL_SKILLS, path=skill.path)
         except (KeyError, ValueError):
             pass
         ALL_SKILLS.add_skill(skill)
@@ -621,7 +641,10 @@ def install(
         skill_dirs = _collect_skill_dirs(source_path, skill_name=requested_skill)
         if not skill_dirs:
             raise FileNotFoundError(f"No SKILL.md found under {source_path}")
-        installed = [_copy_skill_dir(skill_dir, resolved_target_root, yes) for skill_dir in skill_dirs]
+        installed = [
+            _copy_skill_dir(skill_dir, resolved_target_root, yes, source=str(skill_dir.expanduser().resolve()))
+            for skill_dir in skill_dirs
+        ]
         _sync_installed_paths_to_allskills(installed)
         return installed
 
@@ -636,7 +659,7 @@ def install(
             skill_dirs = _collect_skill_dirs(source_root, skill_name=requested_skill)
             if not skill_dirs:
                 raise FileNotFoundError(f"No SKILL.md found in repo {repo_url}")
-            installed = [_copy_skill_dir(skill_dir, resolved_target_root, yes) for skill_dir in skill_dirs]
+            installed = [_copy_skill_dir(skill_dir, resolved_target_root, yes, source=repo_url) for skill_dir in skill_dirs]
             _sync_installed_paths_to_allskills(installed)
             return installed
 
@@ -685,6 +708,7 @@ def create_skill(name: str, target_root: Path | None = None) -> Path:
                 encoding="utf-8",
             )
 
+    write_skill_source_metadata(skill_dir, source=str(root.expanduser().resolve()))
     _sync_installed_paths_to_allskills([skill_dir])
     return skill_dir
 
@@ -693,7 +717,7 @@ def delete_skill(name: str | None = None, paths: Iterable[Path | str] | None = N
     """Delete one skill by name and/or explicit directory path.
 
     Supported modes:
-    - name only: resolve from Allskills and delete its base_dir.
+    - name only: resolve from Allskills and delete its skill directory.
     - path only: delete by explicit skill directory path.
     - both name+path: validate path maps to that name in Allskills, then delete path.
     """
@@ -717,7 +741,7 @@ def delete_skill(name: str | None = None, paths: Iterable[Path | str] | None = N
         target_name = name
         matched_name: str | None = None
         for skill in ALL_SKILLS.skills:
-            if skill.base_dir.expanduser().resolve() == target_from_paths:
+            if _skill_dir_of(skill) == target_from_paths:
                 matched_name = skill.name
                 break
         if matched_name is None:
@@ -739,18 +763,23 @@ def delete_skill(name: str | None = None, paths: Iterable[Path | str] | None = N
 
     try:
         if target_name is None:
-            ALL_SKILLS.remove_skill(base_dir=target_path)
+            _remove_skill_compat(ALL_SKILLS, path=target_path)
         else:
-            ALL_SKILLS.remove_skill(name=target_name, base_dir=target_path)
+            _remove_skill_compat(ALL_SKILLS, name=target_name, path=target_path)
     except (KeyError, ValueError):
         pass
 
-    deleted_resolved = target_path.expanduser().resolve()
-    ALL_SKILLS.paths = [path for path in ALL_SKILLS.paths if path.expanduser().resolve() != deleted_resolved]
+    skill_items = getattr(ALL_SKILLS, "skills", [])
+    remaining_roots = {
+        Path(getattr(skill, "base_dir")).expanduser().resolve()
+        for skill in skill_items
+        if getattr(skill, "base_dir", None) is not None
+    }
+    ALL_SKILLS.paths = [path for path in ALL_SKILLS.paths if path.expanduser().resolve() in remaining_roots]
     return target_path
 
 
-def show_skill(name: str, paths: Iterable[Path] | None = None, base_dir: Path | str | None = None) -> str:
+def show_skill(name: str, paths: Iterable[Path] | None = None, path: Path | str | None = None) -> str:
     """Show one skill's full content from Allskills in beautified format."""
     _ = paths
-    return ALL_SKILLS.showskill(name, base_dir=base_dir)
+    return ALL_SKILLS.showskill(name, path=path)

@@ -13,9 +13,12 @@ class Skill:
 
     name: str
     description: str
+    # Skill directory path (contains SKILL.md, references/, scripts/, assets/...)
     path: Path
+    # Parent directory that contains the skill directory (skills root)
     base_dir: Path
-    source: Path
+    # Install/discovery source (repo URL or local source path)
+    source: str
     context: str | None = None
     is_global: bool = False
     universal: bool = False
@@ -32,8 +35,7 @@ class Skill:
             "universal": self.universal,
             "path": str(self.path),
             "baseDir": str(self.base_dir),
-            "source": str(self.source),
-            "location": "global" if self.is_global else "project",
+            "source": self.source,
             "environment": dict(self.environment),
             "frontmatter": dict(self.frontmatter),
         }

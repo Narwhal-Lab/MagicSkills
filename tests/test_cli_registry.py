@@ -12,6 +12,7 @@ from magicskills.cli import (
     build_parser,
     cmd_add_skill_to_instance,
     cmd_delete_skill,
+    cmd_delete_skill_from_instance,
     cmd_list_skills_instances,
     cmd_read,
     cmd_upload_skill,
@@ -36,6 +37,17 @@ def test_registry_persists_instances(tmp_path: Path) -> None:
 
     reloaded = SkillsRegistry(store_path=store_path)
     assert "demo" in reloaded.list()
+
+
+def test_registry_always_contains_allskills(tmp_path: Path) -> None:
+    registry = SkillsRegistry(store_path=tmp_path / "collections.json")
+    assert "Allskills" in registry.list()
+
+
+def test_registry_disallows_deleting_allskills(tmp_path: Path) -> None:
+    registry = SkillsRegistry(store_path=tmp_path / "collections.json")
+    with pytest.raises(ValueError, match="built-in"):
+        registry.delete("Allskills")
 
 
 def test_cli_install_accepts_skill_name_as_source() -> None:
@@ -70,26 +82,27 @@ def test_cli_deleteskill_accepts_name_or_path() -> None:
     parser = build_parser()
     args_by_name = parser.parse_args(["deleteskill", "demo"])
     assert args_by_name.command == "deleteskill"
-    assert args_by_name.name == "demo"
-    assert args_by_name.path is None
+    assert args_by_name.target == "demo"
 
-    args_by_path = parser.parse_args(["deleteskill", "--path", "./skills/demo"])
+    args_by_path = parser.parse_args(["deleteskill", "./skills/demo"])
     assert args_by_path.command == "deleteskill"
-    assert args_by_path.name is None
-    assert args_by_path.path == "./skills/demo"
+    assert args_by_path.target == "./skills/demo"
 
-    args_both = parser.parse_args(["deleteskill", "demo", "--path", "./skills/demo"])
-    assert args_both.command == "deleteskill"
-    assert args_both.name == "demo"
-    assert args_both.path == "./skills/demo"
+    args_delete_from_instance = parser.parse_args(["deleteskill2skills", "team-a", "demo"])
+    assert args_delete_from_instance.command == "deleteskill2skills"
+    assert args_delete_from_instance.name == "team-a"
+    assert args_delete_from_instance.target == "demo"
 
 
-def test_cli_showskill_accepts_optional_path() -> None:
+def test_cli_showskill_accepts_name_or_path_target() -> None:
     parser = build_parser()
-    args = parser.parse_args(["showskill", "demo", "--path", "./skills/demo"])
-    assert args.command == "showskill"
-    assert args.name == "demo"
-    assert args.path == "./skills/demo"
+    args_by_name = parser.parse_args(["showskill", "demo"])
+    assert args_by_name.command == "showskill"
+    assert args_by_name.target == "demo"
+
+    args_by_path = parser.parse_args(["showskill", "./skills/demo"])
+    assert args_by_path.command == "showskill"
+    assert args_by_path.target == "./skills/demo"
 
 
 def test_cmd_read_reads_file_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -104,6 +117,44 @@ def test_cmd_read_reads_file_path(tmp_path: Path, capsys: pytest.CaptureFixture[
     assert str(file_path.resolve()) in output
     assert "hello" in output
     assert "world" in output
+
+
+def test_cmd_read_accepts_skill_name_from_allskills(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch
+) -> None:
+    skill_dir = tmp_path / "skills" / "demo"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    skill_md = skill_dir / "SKILL.md"
+    skill_md.write_text("demo-skill-content\n", encoding="utf-8")
+
+    class _SkillRef:
+        path = skill_dir
+
+    class _FakeAllSkills:
+        def get_skill(self, name: str, path: Path | None = None, base_dir: Path | None = None):
+            _ = (path, base_dir)
+            if name != "demo":
+                raise KeyError(name)
+            return _SkillRef()
+
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+
+    exit_code = cmd_read(argparse.Namespace(path="demo"))
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Reading file:" in output
+    assert "demo-skill-content" in output
+
+
+def test_cmd_read_duplicate_skill_name_requires_path(monkeypatch) -> None:
+    class _FakeAllSkills:
+        def get_skill(self, name: str, path: Path | None = None, base_dir: Path | None = None):
+            _ = (name, path, base_dir)
+            raise KeyError("Multiple skills named 'demo' found. Provide path. Candidates: a, b")
+
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    with pytest.raises(SystemExit, match="please pass file path"):
+        cmd_read(argparse.Namespace(path="demo"))
 
 
 def test_cmd_read_rejects_directory(tmp_path: Path) -> None:
@@ -150,7 +201,8 @@ def test_cmd_addskill2skills_uses_allskills_resolution(tmp_path: Path, monkeypat
     class _SkillRef:
         def __init__(self) -> None:
             self.name = "demo"
-            self.base_dir = tmp_path / "skills" / "demo"
+            self.path = tmp_path / "skills" / "demo"
+            self.base_dir = self.path.parent
 
     class _Instance:
         def __init__(self) -> None:
@@ -158,8 +210,13 @@ def test_cmd_addskill2skills_uses_allskills_resolution(tmp_path: Path, monkeypat
             self._remove_called = False
             self._add_called = False
 
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            _ = (name, base_dir)
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            _ = (name, path, base_dir)
             self._remove_called = True
             raise KeyError("not found")
 
@@ -181,10 +238,10 @@ def test_cmd_addskill2skills_uses_allskills_resolution(tmp_path: Path, monkeypat
 
     class _FakeAllSkills:
         def __init__(self) -> None:
-            self.calls: list[tuple[str, Path | None]] = []
+            self.calls: list[tuple[str, Path | None, Path | None]] = []
 
-        def get_skill(self, name: str, base_dir: Path | None = None):
-            self.calls.append((name, base_dir))
+        def get_skill(self, name: str, path: Path | None = None, base_dir: Path | None = None):
+            self.calls.append((name, path, base_dir))
             return _SkillRef()
 
     fake_registry = _FakeRegistry()
@@ -193,10 +250,10 @@ def test_cmd_addskill2skills_uses_allskills_resolution(tmp_path: Path, monkeypat
     monkeypatch.setattr(cli_module, "ALL_SKILLS", fake_allskills)
 
     exit_code = cmd_add_skill_to_instance(
-        argparse.Namespace(name="team-a", skill_name="demo", path="./skills/demo")
+        argparse.Namespace(name="team-a", target="demo")
     )
     assert exit_code == 0
-    assert fake_allskills.calls == [("demo", Path("./skills/demo").expanduser())]
+    assert fake_allskills.calls == [("demo", None, None)]
     assert fake_registry.saved is True
 
 
@@ -206,15 +263,15 @@ def test_cmd_addskill2skills_requires_path_when_name_duplicated(monkeypatch) -> 
             return object()
 
     class _FakeAllSkills:
-        def get_skill(self, name: str, base_dir: Path | None = None):
-            _ = (name, base_dir)
-            raise KeyError("Multiple skills named 'demo' found. Provide base_dir. Candidates: a, b")
+        def get_skill(self, name: str, path: Path | None = None, base_dir: Path | None = None):
+            _ = (name, path, base_dir)
+            raise KeyError("Multiple skills named 'demo' found. Provide path. Candidates: a, b")
 
     monkeypatch.setattr(cli_module, "REGISTRY", _FakeRegistry())
     monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
 
-    with pytest.raises(SystemExit, match="please add --path"):
-        cmd_add_skill_to_instance(argparse.Namespace(name="team-a", skill_name="demo", path=None))
+    with pytest.raises(SystemExit, match="skill-directory-path"):
+        cmd_add_skill_to_instance(argparse.Namespace(name="team-a", target="demo"))
 
 
 def test_cmd_uploadskill_reports_duplicate_name_path_hint(monkeypatch) -> None:
@@ -336,11 +393,121 @@ def test_cmd_uploadskill_exits_when_gh_auth_not_completed(monkeypatch) -> None:
 
 def test_cmd_deleteskill_requires_path_when_name_duplicated(monkeypatch) -> None:
     class _FakeAllSkills:
-        def get_skill(self, name: str, base_dir: Path | None = None):
-            _ = (name, base_dir)
-            raise KeyError("Multiple skills named 'dup' found. Provide base_dir. Candidates: a, b")
+        def get_skill(self, name: str, path: Path | None = None, base_dir: Path | None = None):
+            _ = (name, path, base_dir)
+            raise KeyError("Multiple skills named 'dup' found. Provide path. Candidates: a, b")
 
     monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
 
-    with pytest.raises(SystemExit, match="please add --path"):
-        cmd_delete_skill(argparse.Namespace(name="dup", path=None))
+    with pytest.raises(SystemExit, match="skill-directory-path"):
+        cmd_delete_skill(argparse.Namespace(target="dup"))
+
+
+def test_cmd_deleteskill_default_prunes_other_collections(monkeypatch, tmp_path: Path) -> None:
+    deleted_path = (tmp_path / "skills" / "demo").resolve()
+    other_skill_dir = (tmp_path / "skills" / "other").resolve()
+
+    class _Skill:
+        def __init__(self, path: Path) -> None:
+            self.path = path
+            self.base_dir = path.parent
+
+    class _Collection:
+        def __init__(self) -> None:
+            self.paths = [deleted_path.parent]
+            self.skills = [_Skill(other_skill_dir)]
+            self.remove_calls: list[Path] = []
+
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            _ = (name, base_dir)
+            assert path is not None
+            self.remove_calls.append(Path(path).resolve())
+
+    class _FakeRegistry:
+        def __init__(self) -> None:
+            self.named = _Collection()
+            self.saved: list[str] = []
+
+        def list(self) -> list[str]:
+            return ["Allskills", "team-a"]
+
+        def get(self, name: str):
+            if name == "Allskills":
+                return cli_module.ALL_SKILLS
+            if name == "team-a":
+                return self.named
+            raise KeyError(name)
+
+        def save_instance(self, name: str) -> None:
+            self.saved.append(name)
+
+    def _fake_delete_skill(name: str | None, paths: list[Path] | None = None) -> Path:
+        _ = (name, paths)
+        return deleted_path
+
+    fake_registry = _FakeRegistry()
+    monkeypatch.setattr(cli_module, "REGISTRY", fake_registry)
+    monkeypatch.setattr(cli_module, "delete_skill", _fake_delete_skill)
+
+    exit_code = cmd_delete_skill(argparse.Namespace(target=str(deleted_path)))
+    assert exit_code == 0
+    assert fake_registry.named.remove_calls == [deleted_path]
+    assert fake_registry.saved == ["team-a"]
+
+
+def test_cmd_deleteskill2skills_removes_only_target_instance(monkeypatch, tmp_path: Path) -> None:
+    target_path = (tmp_path / "skills" / "dup").resolve()
+
+    class _SkillRef:
+        def __init__(self, name: str, path: Path) -> None:
+            self.name = name
+            self.path = path
+            self.base_dir = path.parent
+
+    class _Instance:
+        def __init__(self) -> None:
+            self.name = "team-a"
+            self.paths = [target_path.parent]
+            self.skills = [_SkillRef("dup", target_path)]
+            self.remove_calls: list[tuple[str | None, Path | str | None]] = []
+
+        def get_skill(self, name: str, path: Path | None = None, base_dir: Path | None = None):
+            _ = (path, base_dir)
+            if name != "dup":
+                raise KeyError(name)
+            return self.skills[0]
+
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            _ = base_dir
+            self.remove_calls.append((name, path))
+            self.skills = []
+
+    class _FakeRegistry:
+        def __init__(self) -> None:
+            self.instance = _Instance()
+            self.saved: list[str] = []
+
+        def get(self, name: str):
+            assert name == "team-a"
+            return self.instance
+
+        def save_instance(self, name: str) -> None:
+            self.saved.append(name)
+
+    fake_registry = _FakeRegistry()
+    monkeypatch.setattr(cli_module, "REGISTRY", fake_registry)
+
+    exit_code = cmd_delete_skill_from_instance(argparse.Namespace(name="team-a", target="dup"))
+    assert exit_code == 0
+    assert fake_registry.instance.remove_calls == [("dup", target_path)]
+    assert fake_registry.saved == ["team-a"]

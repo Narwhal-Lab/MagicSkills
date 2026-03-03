@@ -21,12 +21,11 @@ def generate_skills_xml(skills: Iterable[Skill], invocation: str) -> str:
     _ = invocation
     skill_tags = []
     for skill in skills:
-        location = "global" if skill.is_global else "project"
         skill_tags.append(
             "<skill>\n"
             f"<name>{skill.name}</name>\n"
             f"<description>{skill.description}</description>\n"
-            f"<location>{location}</location>\n"
+            f"<path>{skill.path}</path>\n"
             "</skill>"
         )
     skills_block = "\n\n".join(skill_tags)
@@ -38,7 +37,7 @@ def generate_skills_xml(skills: Iterable[Skill], invocation: str) -> str:
         "<usage>\n"
         "When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively.\n\n"
         "How to use skills:\n"
-        "- Invoke: `npx openskills read <skill-name>` (run in your shell)\n"
+        "- Invoke: `magicskills readskill <path>` (run in your shell)\n"
         "- The skill content will load with detailed instructions\n"
         "- Base directory provided in output for resolving bundled resources\n\n"
         "Usage notes:\n"
