@@ -16,6 +16,8 @@ def test_discover_skills_fixture() -> None:
     assert len(skills) == 1
     skill = skills[0]
     assert skill.name == "demo"
+    assert skill.path == fixtures / "demo"
+    assert skill.base_dir == fixtures
     assert "Demo skill" in skill.description
     assert skill.frontmatter["description"] == "Demo skill"
 
@@ -58,6 +60,27 @@ def test_readskill_output() -> None:
     assert "# Demo Skill" in output
 
 
+def test_readskill_accepts_skill_name() -> None:
+    fixtures = Path(__file__).parent / "fixtures" / "skills"
+    skills = Skills(paths=[fixtures])
+    output = skills.readskill("demo")
+    assert "description: Demo skill for tests" in output
+    assert "# Demo Skill" in output
+
+
+def test_readskill_duplicate_name_requires_path(tmp_path: Path) -> None:
+    root_a = tmp_path / "skills_a"
+    root_b = tmp_path / "skills_b"
+    (root_a / "same").mkdir(parents=True, exist_ok=True)
+    (root_b / "same").mkdir(parents=True, exist_ok=True)
+    (root_a / "same" / "SKILL.md").write_text("---\ndescription: same-a\n---\n", encoding="utf-8")
+    (root_b / "same" / "SKILL.md").write_text("---\ndescription: same-b\n---\n", encoding="utf-8")
+
+    skills = Skills(paths=[root_a, root_b])
+    with pytest.raises(ValueError, match="please pass an explicit file path"):
+        skills.readskill("same")
+
+
 def test_showskill_output_is_beautified() -> None:
     fixtures = Path(__file__).parent / "fixtures" / "skills"
     skills = Skills(paths=[fixtures])
@@ -75,7 +98,7 @@ def test_legacy_import_path_still_available() -> None:
     assert LegacySkills is Skills
 
 
-def test_add_remove_skill_uses_base_dir_for_identity(tmp_path: Path) -> None:
+def test_add_remove_skill_uses_path_for_identity(tmp_path: Path) -> None:
     base_a = tmp_path / "same_a"
     base_b = tmp_path / "same_b"
     base_a.mkdir(parents=True, exist_ok=True)
@@ -86,16 +109,16 @@ def test_add_remove_skill_uses_base_dir_for_identity(tmp_path: Path) -> None:
     skill_a = Skill(
         name="same",
         description="same",
-        path=base_a / "SKILL.md",
-        base_dir=base_a,
-        source=base_a.parent,
+        path=base_a,
+        base_dir=base_a.parent,
+        source=str(base_a.parent),
     )
     skill_b = Skill(
         name="same",
         description="same",
-        path=base_b / "SKILL.md",
-        base_dir=base_b,
-        source=base_b.parent,
+        path=base_b,
+        base_dir=base_b.parent,
+        source=str(base_b.parent),
     )
 
     skills = Skills(skills=[skill_a], paths=[])
@@ -105,9 +128,9 @@ def test_add_remove_skill_uses_base_dir_for_identity(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Multiple skills named 'same'"):
         skills.remove_skill(name="same")
 
-    skills.remove_skill(name="same", base_dir=base_a)
+    skills.remove_skill(name="same", path=base_a)
     assert len(skills.skills) == 1
-    assert skills.skills[0].base_dir == base_b
+    assert skills.skills[0].path == base_b
 
 
 def test_execskill_includes_all_collection_skill_environments(tmp_path: Path, monkeypatch) -> None:

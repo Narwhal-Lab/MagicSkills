@@ -63,8 +63,13 @@ def test_install_adds_installed_skill_base_dir_to_allskills(tmp_path: Path, monk
             self.paths: list[Path] = []
             self.skills_added: list[object] = []
 
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            _ = (name, base_dir)
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            _ = (name, path, base_dir)
             raise KeyError("missing")
 
         def add_skill(self, skill: object) -> None:
@@ -75,7 +80,7 @@ def test_install_adds_installed_skill_base_dir_to_allskills(tmp_path: Path, monk
 
     install(str(source_root), yes=True, target_root=target_root)
 
-    assert target_root / "demo" in fake.paths
+    assert target_root in fake.paths
     assert len(fake.skills_added) == 1
     assert getattr(fake.skills_added[0], "name", None) == "demo"
 
@@ -88,8 +93,13 @@ def test_create_skill_adds_to_allskills(tmp_path: Path, monkeypatch) -> None:
             self.paths: list[Path] = []
             self.skills_added: list[object] = []
 
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            _ = (name, base_dir)
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            _ = (name, path, base_dir)
             raise KeyError("missing")
 
         def add_skill(self, skill: object) -> None:
@@ -102,9 +112,10 @@ def test_create_skill_adds_to_allskills(tmp_path: Path, monkeypatch) -> None:
 
     assert created == root / "demo"
     assert (created / "SKILL.md").exists()
-    assert created in fake.paths
+    assert root in fake.paths
     assert len(fake.skills_added) == 1
-    assert getattr(fake.skills_added[0], "base_dir", None) == created
+    assert getattr(fake.skills_added[0], "path", None) == created
+    assert getattr(fake.skills_added[0], "base_dir", None) == root
 
 
 def test_create_skill_rejects_non_skill_non_empty_directory(tmp_path: Path) -> None:
@@ -128,8 +139,13 @@ def test_create_skill_existing_valid_skill_does_not_fill_scaffold(tmp_path: Path
             self.paths: list[Path] = []
             self.skills_added: list[object] = []
 
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            _ = (name, base_dir)
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            _ = (name, path, base_dir)
             raise KeyError("missing")
 
         def add_skill(self, skill: object) -> None:
@@ -144,7 +160,7 @@ def test_create_skill_existing_valid_skill_does_not_fill_scaffold(tmp_path: Path
     assert not (skill_dir / "references").exists()
     assert not (skill_dir / "scripts").exists()
     assert not (skill_dir / "assets").exists()
-    assert created in fake.paths
+    assert root in fake.paths
     assert len(fake.skills_added) == 1
 
 
@@ -321,17 +337,23 @@ def test_upload_skill_duplicate_name_requires_directory_path(tmp_path: Path, mon
     second = _make_skill(tmp_path / "skills_b", "dup")
 
     class _SkillRef:
-        def __init__(self, name: str, base_dir: Path) -> None:
+        def __init__(self, name: str, path: Path) -> None:
             self.name = name
-            self.base_dir = base_dir
+            self.path = path
+            self.base_dir = path.parent
 
     class _FakeAllSkills:
         def __init__(self) -> None:
             self.skills = [_SkillRef("dup", first), _SkillRef("dup", second)]
             self.paths: list[Path] = []
 
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            _ = (name, base_dir)
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            _ = (name, path, base_dir)
 
         def add_skill(self, skill: object) -> None:
             _ = skill
@@ -347,17 +369,23 @@ def test_upload_skill_prefers_allskills_name_lookup_before_bare_local_dir(tmp_pa
     allskills_dir = _make_skill(tmp_path / "allskills", "demo")
 
     class _SkillRef:
-        def __init__(self, name: str, base_dir: Path) -> None:
+        def __init__(self, name: str, path: Path) -> None:
             self.name = name
-            self.base_dir = base_dir
+            self.path = path
+            self.base_dir = path.parent
 
     class _FakeAllSkills:
         def __init__(self) -> None:
             self.skills = [_SkillRef("demo", allskills_dir)]
             self.paths: list[Path] = []
 
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            _ = (name, base_dir)
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            _ = (name, path, base_dir)
 
         def add_skill(self, skill: object) -> None:
             _ = skill
@@ -463,21 +491,24 @@ def test_delete_skill_by_name_uses_allskills_and_removes_registry_path(tmp_path:
     target = _make_skill(tmp_path / "skills", "demo")
 
     class _SkillRef:
-        def __init__(self, base_dir: Path) -> None:
-            self.base_dir = base_dir
+        def __init__(self, path: Path) -> None:
+            self.path = path
+            self.base_dir = path.parent
 
     class _FakeAllSkills:
         def __init__(self) -> None:
-            self.paths: list[Path] = [target]
-            self.remove_calls: list[tuple[str | None, Path | str | None]] = []
+            self.paths: list[Path] = [target.parent]
+            self.skills: list[object] = [_SkillRef(target)]
+            self.remove_calls: list[tuple[str | None, Path | str | None, Path | str | None]] = []
 
-        def get_skill(self, name: str):
-            if name != "demo":
-                raise KeyError(name)
-            return _SkillRef(target)
-
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            self.remove_calls.append((name, base_dir))
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            self.remove_calls.append((name, path, base_dir))
+            self.skills = []
 
         def add_skill(self, skill: object) -> None:
             _ = skill
@@ -489,7 +520,7 @@ def test_delete_skill_by_name_uses_allskills_and_removes_registry_path(tmp_path:
 
     assert deleted == target.resolve()
     assert not target.exists()
-    assert fake.remove_calls == [("demo", target.resolve())]
+    assert fake.remove_calls == [("demo", target.resolve(), None)]
     assert fake.paths == []
 
 
@@ -500,11 +531,17 @@ def test_delete_skill_by_path_without_name(tmp_path: Path, monkeypatch) -> None:
 
     class _FakeAllSkills:
         def __init__(self) -> None:
-            self.paths: list[Path] = [target]
-            self.remove_calls: list[tuple[str | None, Path | str | None]] = []
+            self.paths: list[Path] = [target.parent]
+            self.skills: list[object] = []
+            self.remove_calls: list[tuple[str | None, Path | str | None, Path | str | None]] = []
 
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            self.remove_calls.append((name, base_dir))
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            self.remove_calls.append((name, path, base_dir))
 
     fake = _FakeAllSkills()
     monkeypatch.setattr(installer_module, "ALL_SKILLS", fake)
@@ -513,7 +550,7 @@ def test_delete_skill_by_path_without_name(tmp_path: Path, monkeypatch) -> None:
 
     assert deleted == target.resolve()
     assert not target.exists()
-    assert fake.remove_calls == [(None, target.resolve())]
+    assert fake.remove_calls == [(None, target.resolve(), None)]
     assert fake.paths == []
 
 
@@ -521,18 +558,25 @@ def test_delete_skill_by_name_and_path_validates_match(tmp_path: Path, monkeypat
     target = _make_skill(tmp_path / "skills", "demo")
 
     class _SkillRef:
-        def __init__(self, name: str, base_dir: Path) -> None:
+        def __init__(self, name: str, path: Path) -> None:
             self.name = name
-            self.base_dir = base_dir
+            self.path = path
+            self.base_dir = path.parent
 
     class _FakeAllSkills:
         def __init__(self) -> None:
-            self.paths: list[Path] = [target]
+            self.paths: list[Path] = [target.parent]
             self.skills = [_SkillRef("demo", target)]
-            self.remove_calls: list[tuple[str | None, Path | str | None]] = []
+            self.remove_calls: list[tuple[str | None, Path | str | None, Path | str | None]] = []
 
-        def remove_skill(self, name: str | None = None, base_dir: Path | str | None = None) -> None:
-            self.remove_calls.append((name, base_dir))
+        def remove_skill(
+            self,
+            name: str | None = None,
+            path: Path | str | None = None,
+            base_dir: Path | str | None = None,
+        ) -> None:
+            self.remove_calls.append((name, path, base_dir))
+            self.skills = []
 
     fake = _FakeAllSkills()
     monkeypatch.setattr(installer_module, "ALL_SKILLS", fake)
@@ -541,7 +585,7 @@ def test_delete_skill_by_name_and_path_validates_match(tmp_path: Path, monkeypat
 
     assert deleted == target.resolve()
     assert not target.exists()
-    assert fake.remove_calls == [("demo", target.resolve())]
+    assert fake.remove_calls == [("demo", target.resolve(), None)]
     assert fake.paths == []
 
 
@@ -549,13 +593,14 @@ def test_delete_skill_by_name_and_path_rejects_mismatch(tmp_path: Path, monkeypa
     target = _make_skill(tmp_path / "skills", "demo")
 
     class _SkillRef:
-        def __init__(self, name: str, base_dir: Path) -> None:
+        def __init__(self, name: str, path: Path) -> None:
             self.name = name
-            self.base_dir = base_dir
+            self.path = path
+            self.base_dir = path.parent
 
     class _FakeAllSkills:
         def __init__(self) -> None:
-            self.paths: list[Path] = [target]
+            self.paths: list[Path] = [target.parent]
             self.skills = [_SkillRef("other", target)]
 
     fake = _FakeAllSkills()

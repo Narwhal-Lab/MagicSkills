@@ -13,6 +13,7 @@ from .utils import normalize_paths
 
 REGISTRY_DIRNAME = ".magicskills"
 REGISTRY_FILENAME = "collections.json"
+ALL_SKILLS_NAME = "Allskills"
 
 
 def _default_store_path() -> Path:
@@ -27,6 +28,12 @@ class SkillsRegistry:
         self._instances: dict[str, Skills] = {}
         self._store_path = store_path or _default_store_path()
         self._load()
+        self._ensure_default_instance()
+
+    def _ensure_default_instance(self) -> None:
+        """Ensure built-in `Allskills` collection always exists in registry."""
+        if ALL_SKILLS_NAME not in self._instances:
+            self._instances[ALL_SKILLS_NAME] = Skills(name=ALL_SKILLS_NAME)
 
     def _load(self) -> None:
         """Load collections from disk if registry file exists."""
@@ -102,6 +109,8 @@ class SkillsRegistry:
 
     def delete(self, name: str) -> None:
         """Delete one named collection and persist change."""
+        if name == ALL_SKILLS_NAME:
+            raise ValueError(f"Skills instance '{ALL_SKILLS_NAME}' is built-in and cannot be deleted")
         if name not in self._instances:
             raise KeyError(f"Skills instance '{name}' not found")
         del self._instances[name]
@@ -115,4 +124,4 @@ class SkillsRegistry:
 
 
 REGISTRY = SkillsRegistry()
-ALL_SKILLS = Skills(name="Allskills")
+ALL_SKILLS = REGISTRY.get(ALL_SKILLS_NAME)
