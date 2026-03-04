@@ -1,7 +1,6 @@
 <div align="center">
 
-<!-- 有 Logo 之后取消注释下行 -->
-<!-- <img src="./image/logo.png" alt="MagicSkills" width="360" /> -->
+<img src="./image/logo.png" alt="MagicSkills" width="300" /> 
 
 # ✨ MagicSkills
 
