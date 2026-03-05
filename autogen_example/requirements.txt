@@ -1,0 +1,2 @@
+# AutoGen集成示例依赖
+pyautogen>=0.2.0
