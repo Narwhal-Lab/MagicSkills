@@ -1,0 +1,15 @@
+It seems there's an issue with the response parsing. However, I can see from the error message that the tool did return the list of available skills. Based on the response, I can see there are 2 available skills:
+
+1. **explain-code**
+   - Description: Explains code with visual diagrams and analogies. Use when explaining how code works, teaching about a codebase, or when the user asks "how does this work?"
+   - Path: C:\Users\13978\.claude\skills\explain-code
+
+2. **pdf**
+   - Description: Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.
+   - Path: D:\Python-learning\pythonProject\Skills-For-All-Agent\.claude\skills\pdf
+
+So there are two available skills in the system:
+1. **explain-code** - for explaining code with diagrams and analogies
+2. **pdf** - for comprehensive PDF manipulation and processing
+
+Would you like me to explore either of these skills in more detail?
