@@ -2,7 +2,10 @@
 
 <img src="./image/Logo.png" alt="MagicSkills" width="300" /> 
 
-# ✨ MagicSkills
+# ✨ MagicSkills 
+
+能为每个智能体极其方便的配备其所单独所需要的skill能力
+
 
 **跨平台 AI Agent Skill 管理与工具分发利器**
 
@@ -18,7 +21,7 @@
 
 ---
 
-## 🎯 MagicSkills
+## 🎯 What Is OpenSkills?
 
 一个跨平台的 Python 3.10/3.11/3.12/3.13 包，用于管理基于 SKILL.md 的 skills，并提供可直接接入 agent 的 tool function。
 
@@ -161,10 +164,9 @@ magicskills uploadskill c_2_ast --no-push --json
 | `createskills <instance>` | 创建命名 `Skills` 实例并持久化到注册表 | `--paths` `--tool-description` `--agent-md-path` |
 | `listskills` | 列出所有命名实例 | `--json` |
 | `deleteskills <instance>` | 删除命名实例（不删磁盘 skill 文件） | — |
-| `addskill2skills <instance> <name>` | 把 skill 的 source 路径加入实例的搜索路径 | `--from-paths` |
 | `changetooldescription <instance> "<desc>"` | 修改实例的 `tool_description` | — |
 | `syncskills` | 把实例 skill 清单同步到 `AGENTS.md` | `-o/--output` `-y/--yes` `--paths` `--name` |
-| `skill-for-all-agent <action> --arg "<arg>"` | 通过 CLI 调用 `Skill_For_All_Agent` 入口 | `--name` `--paths` |
+| `skill-tool <action> --arg "<arg>"` | 通过 CLI 调用 `skill_tool` 入口 | `--name` `--paths` |
 
 > **持久化文件：** `./.magicskills/collections.json`
 
@@ -175,28 +177,15 @@ magicskills uploadskill c_2_ast --no-push --json
 ### 方案 1：函数式入口（推荐）
 
 ```python
-from magicskills import Skill_For_All_Agent
+from magicskills import skill_tool
 
-print(Skill_For_All_Agent("listskill", ""))
-print(Skill_For_All_Agent("readskill", "pdf"))
-print(Skill_For_All_Agent("execskill", "pdf::python3 scripts/example.py"))
+print(skill_tool("listskill", ""))
+print(skill_tool("readskill", "pdf"))
+print(skill_tool("execskill", "pdf::python3 scripts/example.py"))
 
 # 指定命名 skills 实例（例如 createskills 创建的 team-a）
-print(Skill_For_All_Agent("readskill", "pdf", name="team-a"))
+print(skill_tool("readskill", "pdf", name="team-a"))
 ```
-
-### 方案 2：对象入口（SkillTool）
-
-```python
-from magicskills import SkillTool
-
-tool = SkillTool()
-print(tool.handle({"action": "listskill", "arg": ""}))
-print(tool.handle({"action": "readskill", "arg": "pdf"}))
-print(tool.handle({"action": "execskill", "arg": "pdf::python3 scripts/example.py"}))
-```
-
----
 
 ## 📚 公共 Python API
 
@@ -204,7 +193,7 @@ print(tool.handle({"action": "execskill", "arg": "pdf::python3 scripts/example.p
 
 | 分类 | 函数 |
 |------|------|
-| **核心入口** | `Skill_For_All_Agent`（支持 `name=<instance>` 指定实例） |
+| **核心入口** | `skill_tool`（支持 `name=<instance>` 指定实例） |
 | **集合管理** | `createskills` · `listskills` · `deleteskills` · `syncskills` · `addskill2skills` · `changetooldescription` |
 | **单 Skill** | `listskill` · `showskill` · `createskill` · `deleteskill` · `installskill` · `uploadskill` |
 
@@ -233,7 +222,6 @@ src/magicskills/
 ├── __init__.py          # 对外 API
 ├── __main__.py          # python -m magicskills
 ├── cli.py               # CLI 入口
-├── agent_tool/          # SkillTool 封装
 └── core/                # 核心业务
     ├── skill.py
     ├── skills.py

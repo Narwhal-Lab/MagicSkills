@@ -5,21 +5,13 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
+
+if TYPE_CHECKING:
+    from ..type.skill import Skill
+    from ..type.skills import Skills
 
 FRONTMATTER_DELIM = "---"
-
-
-def get_search_dirs(cwd: Path | None = None) -> list[Path]:
-    """Return skill search directories in priority order."""
-    cwd = cwd or Path.cwd()
-    home = Path.home()
-    return [
-        cwd / ".agent" / "skills",
-        home / ".agent" / "skills",
-        cwd / ".claude" / "skills",
-        home / ".claude" / "skills",
-    ]
 
 
 def is_directory_or_symlink_to_directory(path: Path) -> bool:
@@ -149,6 +141,71 @@ def normalize_paths(paths: Iterable[Path | str]) -> list[Path]:
         path = Path(p).expanduser()
         result.append(path)
     return result
+
+
+def skill_paths_from_skills(skills: Iterable["Skill"]) -> list[Path]:
+    """Build de-duplicated skill-directory paths in stable order."""
+    result: list[Path] = []
+    seen: set[Path] = set()
+    for skill in skills:
+        resolved = skill.path.expanduser().resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        result.append(skill.path)
+    return result
+
+
+def skill_paths_to_skills(paths: Iterable[Path | str]) -> list["Skill"]:
+    """Resolve skill paths into discovered Skill objects.
+
+    Each path may be either:
+    - a skills root containing multiple skill directories
+    - a single skill directory that directly contains SKILL.md
+    """
+    from ..type.skill import Skill
+
+    skills: list[Skill] = []
+    seen_paths: set[Path] = set()
+
+    for root in normalize_paths(paths):
+        if not root.exists():
+            continue
+
+        if (root / "SKILL.md").exists() and is_directory_or_symlink_to_directory(root):
+            candidates = [root]
+        else:
+            candidates = [entry for entry in root.iterdir() if is_directory_or_symlink_to_directory(entry)]
+
+        for entry in candidates:
+            resolved_entry = entry.expanduser().resolve()
+            if resolved_entry in seen_paths:
+                continue
+
+            skill_md = entry / "SKILL.md"
+            if not skill_md.exists():
+                continue
+
+            content = read_text(skill_md)
+            description = extract_yaml_field(content, "description")
+            is_global, universal = detect_location(root)
+            skills.append(
+                Skill(
+                    name=entry.name,
+                    description=description,
+                    path=entry,
+                    base_dir=entry.parent,
+                    source=str(root),
+                    is_global=is_global,
+                    universal=universal,
+                )
+            )
+            seen_paths.add(resolved_entry)
+
+    return skills
+
+
+
 
 
 def is_git_url(source: str) -> bool:

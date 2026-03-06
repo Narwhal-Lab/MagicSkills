@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Iterable
 
-from .skill import Skill
+from ..type.skill import Skill
 
 
 SKILL_REGEX = re.compile(r"<skill>[\s\S]*?<name>([^<]+)</name>[\s\S]*?</skill>")

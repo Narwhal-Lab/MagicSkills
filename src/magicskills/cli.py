@@ -15,17 +15,23 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-from .core.installer import (
-    create_skill,
-    delete_skill,
-    install,
-    show_skill,
-    upload_skill,
-)
-from .core.registry import ALL_SKILLS, REGISTRY
-from .core.skill import Skill
-from .core.skills import Skills
-from .core.utils import normalize_paths, read_text
+from .command.install import install
+from .command.createskill import createskill as command_createskill
+from .command.change_tool_description import change_tool_description as command_change_tool_description
+from .command.execskill import execskill as command_execskill
+from .command.listskill import listskill as command_listskill
+from .command.readskill import readskill as command_readskill
+from .command.skill_tool import skill_tool as command_skill_tool
+from .command.syncskills import syncskills as command_syncskills
+from .command.uploadskill import uploadskill as command_uploadskill
+from .command.showskill import showskill as command_showskill
+from .command.createskills import createskills as command_createskills
+from .command.listskills import listskills as command_listskills
+from .command.deleteskills import deleteskills as command_deleteskills
+from .command.deleteskill import deleteskill as command_deleteskill
+from .type.skillsregistry import ALL_SKILLS, REGISTRY
+from .type.skills import Skills
+from .utils.utils import normalize_paths
 
 
 def _is_gh_missing_error(exc: Exception) -> bool:
@@ -151,16 +157,6 @@ def _paths_from_args(values: Iterable[str] | None) -> list[Path] | None:
     return normalize_paths(values)
 
 
-def _looks_like_path_input(value: str) -> bool:
-    """Return True when input should be treated as filesystem path."""
-    raw = value.strip()
-    if not raw:
-        return False
-    if "/" in raw or "\\" in raw or raw.startswith(".") or raw.startswith("~"):
-        return True
-    return Path(raw).expanduser().exists()
-
-
 def _supports_color_output() -> bool:
     """Best-effort detection for ANSI color support in current terminal."""
     if os.environ.get("NO_COLOR"):
@@ -200,144 +196,24 @@ def _skills_from_paths(paths: list[Path] | None) -> Skills:
     return Skills(paths=paths) if paths else ALL_SKILLS
 
 
-def _resolve_skill_in_collection(
-    collection: Skills,
-    name: str,
-    path: str | None = None,
-    command_name: str = "command",
-    duplicate_hint: str = "add --path <skill-dir>",
-) -> Skill:
-    """Resolve one skill from a collection, requiring --path only when duplicate names exist."""
-    skill_path = Path(path).expanduser() if path else None
-    try:
-        try:
-            return collection.get_skill(name, path=skill_path)
-        except TypeError:
-            return collection.get_skill(name, base_dir=skill_path)
-    except KeyError as exc:
-        message = str(exc)
-        if "Multiple skills named" in message and not path:
-            raise SystemExit(
-                f"{command_name}: skill name '{name}' is duplicated; please {duplicate_hint}.\n{message}"
-            ) from exc
-        raise SystemExit(message) from exc
-
-
-def _resolve_allskills_skill(
-    name: str,
-    path: str | None = None,
-    command_name: str = "command",
-    duplicate_hint: str = "add --path <skill-dir>",
-) -> Skill:
-    """Resolve one skill from Allskills, requiring --path only when duplicate names exist."""
-    return _resolve_skill_in_collection(
-        ALL_SKILLS,
-        name=name,
-        path=path,
-        command_name=command_name,
-        duplicate_hint=duplicate_hint,
-    )
-
-
-def _resolve_allskills_skill_by_path(path_value: str, command_name: str = "command") -> Skill:
-    """Resolve one skill from Allskills by exact skill directory path."""
-    target_path = Path(path_value).expanduser().resolve()
-    for skill in ALL_SKILLS.skills:
-        if skill.path.expanduser().resolve() == target_path:
-            return skill
-    raise SystemExit(f"{command_name}: skill path not found in Allskills: {target_path}")
-
-
-def _remove_skill_from_instance(instance: Skills, *, path: Path, name: str | None = None) -> bool:
-    """Try to remove one skill from collection by path (and optional name)."""
-    try:
-        try:
-            instance.remove_skill(name=name, path=path)
-        except TypeError:
-            instance.remove_skill(name=name, base_dir=path)
-    except (KeyError, ValueError):
-        return False
-    return True
-
-
-def _prune_instance_paths(instance: Skills) -> None:
-    """Drop paths that no longer correspond to any skill base_dir in this instance."""
-    keep = {skill.base_dir.expanduser().resolve() for skill in instance.skills}
-    instance.paths = [path for path in instance.paths if path.expanduser().resolve() in keep]
-
-
-def _resolve_skill_target_in_collection(instance: Skills, target: str, command_name: str) -> Skill:
-    """Resolve one skill in a named collection by target(name or path)."""
-    raw_target = target.strip()
-    if not raw_target:
-        raise SystemExit(f"{command_name} requires target: <name-or-path>")
-
-    if _looks_like_path_input(raw_target):
-        target_path = Path(raw_target).expanduser().resolve()
-        for skill in instance.skills:
-            if skill.path.expanduser().resolve() == target_path:
-                return skill
-        raise SystemExit(f"{command_name}: skill path not found in skills instance '{instance.name}': {target_path}")
-
-    return _resolve_skill_in_collection(
-        instance,
-        raw_target,
-        path=None,
-        command_name=command_name,
-        duplicate_hint="pass <skill-directory-path> as target",
-    )
-
-
 def cmd_list(args: argparse.Namespace) -> int:
     """List available skills."""
     _ = args
-    print(ALL_SKILLS.listskill())
+    print(command_listskill(ALL_SKILLS))
     return 0
 
 
 def cmd_read(args: argparse.Namespace) -> int:
     """Read one file by path or by skill name (reads SKILL.md from Allskills)."""
-    raw = str(args.path).strip()
-    file_path = Path(raw).expanduser()
-    explicit_path = "/" in raw or "\\" in raw or raw.startswith(".") or raw.startswith("~")
-    if file_path.exists():
-        if not file_path.is_file():
-            raise SystemExit(f"readskill expects a file path, got: {file_path}")
-    elif explicit_path:
-        raise SystemExit(f"readskill path not found: {file_path}")
-    else:
-        try:
-            resolved_skill = ALL_SKILLS.get_skill(raw)
-        except KeyError as exc:
-            message = str(exc)
-            if "Multiple skills named" in message:
-                raise SystemExit(
-                    f"readskill: skill name '{raw}' is duplicated; please pass file path "
-                    f"(for example: <skill-path>/SKILL.md).\n{message}"
-                ) from exc
-            raise SystemExit(message) from exc
-        file_path = resolved_skill.path / "SKILL.md"
-
     try:
-        content = read_text(file_path)
-    except UnicodeDecodeError as exc:
-        raise SystemExit(f"readskill only supports UTF-8 text files: {file_path}") from exc
-    except OSError as exc:
-        raise SystemExit(f"readskill failed to read '{file_path}': {exc}") from exc
-
-    resolved = file_path.resolve()
-    line_count = len(content.splitlines())
-    byte_count = len(content.encode("utf-8"))
-    print(f"Reading file: {resolved}")
-    print(f"Lines: {line_count}  Bytes: {byte_count}")
-    print("-" * 80)
-    print(content, end="" if content.endswith("\n") else "\n")
-    print("-" * 80)
+        print(command_readskill(ALL_SKILLS, args.path))
+    except (KeyError, ValueError, FileNotFoundError, OSError) as exc:
+        raise SystemExit(str(exc)) from exc
     return 0
 
 
 def cmd_exec(args: argparse.Namespace) -> int:
-    """Execute one command with merged environments from all skills in this collection.
+    """Execute one command in current collection context.
 
     Default behavior streams output directly to the current terminal.
     """
@@ -350,7 +226,7 @@ def cmd_exec(args: argparse.Namespace) -> int:
     if not command:
         raise SystemExit("exec requires command after --")
     stream = not args.json
-    result = skills.execskill(command, shell=not args.no_shell, stream=stream)
+    result = command_execskill(skills, command, shell=not args.no_shell, stream=stream)
     if args.json:
         print(json.dumps(result.__dict__, ensure_ascii=False, indent=2))
     return result.returncode
@@ -358,13 +234,13 @@ def cmd_exec(args: argparse.Namespace) -> int:
 
 def cmd_sync(args: argparse.Namespace) -> int:
     """Sync skills XML section into AGENTS.md (or custom output)."""
-    skills = REGISTRY.get(args.name)
+    skills = REGISTRY.get_skills(args.name)
     if not args.yes:
         confirm = input(f"Sync {len(skills.skills)} skills to {args.output or skills.agent_md_path}? [y/N] ")
         if confirm.strip().lower() not in {"y", "yes"}:
             print("Cancelled.")
             return 1
-    output = skills.syncskills(args.output)
+    output = command_syncskills(skills, args.output)
     print(f"Synced to {output}")
     return 0
 
@@ -386,10 +262,10 @@ def cmd_install(args: argparse.Namespace) -> int:
 
 
 def cmd_create_skill(args: argparse.Namespace) -> int:
-    """Create one skill scaffold."""
-    target_root = Path(args.root).expanduser() if args.root else None
-    path = create_skill(args.name, target_root=target_root)
-    print(f"Created: {path}")
+    """Register one existing skill directory into Allskills."""
+    skill_path = Path(args.path).expanduser()
+    path = command_createskill(ALL_SKILLS, skill_path=skill_path, source=args.source)
+    print(f"Registered: {path}")
     return 0
 
 
@@ -397,10 +273,7 @@ def cmd_upload_skill(args: argparse.Namespace) -> int:
     """Upload one skill with default fork -> push -> PR workflow."""
     for attempt in range(4):
         try:
-            result = upload_skill(
-                source=args.source,
-                create_pr=True,
-            )
+            result = command_uploadskill(ALL_SKILLS, args.source)
             break
         except (KeyError, ValueError, FileNotFoundError) as exc:
             raise SystemExit(str(exc)) from exc
@@ -429,58 +302,12 @@ def cmd_upload_skill(args: argparse.Namespace) -> int:
 
 def cmd_delete_skill(args: argparse.Namespace) -> int:
     """Delete skill by one unified target argument: name or path."""
-    raw_target = str(args.target).strip()
-    if not raw_target:
-        raise SystemExit("deleteskill requires target: <name-or-path>")
-    treat_as_path = _looks_like_path_input(raw_target)
-
-    delete_paths: list[Path]
-    target_name: str | None
-    if treat_as_path:
-        target_name = None
-        delete_paths = [Path(raw_target).expanduser()]
-    else:
-        resolved_skill = _resolve_allskills_skill(
-            raw_target,
-            path=None,
-            command_name="deleteskill",
-            duplicate_hint="pass <skill-directory-path> as target",
-        )
-        delete_paths = [resolved_skill.path]
-        target_name = resolved_skill.name
     try:
-        path = delete_skill(target_name, paths=delete_paths)
+        path = command_deleteskill(ALL_SKILLS, str(args.target))
     except (KeyError, ValueError, FileNotFoundError) as exc:
         raise SystemExit(str(exc)) from exc
 
-    # If physical deletion happened in Allskills, clean stale references in other collections.
-    resolved_deleted = path.expanduser().resolve()
-    for collection_name in REGISTRY.list():
-        instance = REGISTRY.get(collection_name)
-        if instance is ALL_SKILLS:
-            continue
-        if _remove_skill_from_instance(instance, path=resolved_deleted):
-            _prune_instance_paths(instance)
-            REGISTRY.save_instance(collection_name)
-
     print(f"Deleted: {path}")
-    return 0
-
-
-def cmd_delete_skill_from_instance(args: argparse.Namespace) -> int:
-    """Remove one skill from a named skills collection only."""
-    try:
-        instance = REGISTRY.get(args.name)
-    except KeyError as exc:
-        raise SystemExit(str(exc)) from exc
-
-    skill = _resolve_skill_target_in_collection(instance, args.target, command_name="deleteskill2skills")
-    removed = _remove_skill_from_instance(instance, path=skill.path, name=skill.name)
-    if not removed:
-        raise SystemExit(f"deleteskill2skills: failed to remove skill '{skill.name}' from '{args.name}'")
-    _prune_instance_paths(instance)
-    REGISTRY.save_instance(args.name)
-    print(f"Removed from skills instance '{args.name}': {skill.path}")
     return 0
 
 
@@ -489,17 +316,8 @@ def cmd_show_skill(args: argparse.Namespace) -> int:
     raw_target = str(args.target).strip()
     if not raw_target:
         raise SystemExit("showskill requires target: <name-or-path>")
-    if _looks_like_path_input(raw_target):
-        resolved_skill = _resolve_allskills_skill_by_path(raw_target, command_name="showskill")
-    else:
-        resolved_skill = _resolve_allskills_skill(
-            raw_target,
-            path=None,
-            command_name="showskill",
-            duplicate_hint="pass <skill-directory-path> as target",
-        )
     try:
-        print(show_skill(resolved_skill.name, path=resolved_skill.path))
+        print(command_showskill(ALL_SKILLS, raw_target))
     except (KeyError, ValueError, FileNotFoundError) as exc:
         raise SystemExit(str(exc)) from exc
     return 0
@@ -509,12 +327,12 @@ def cmd_create_skills(args: argparse.Namespace) -> int:
     """Create one named skills collection instance."""
     paths = _paths_from_args(args.paths)
     path_values = [str(path) for path in paths] if paths else None
-    instance = REGISTRY.create(name=args.name, paths=path_values)
-    if args.tool_description:
-        instance.change_tool_description(args.tool_description)
-    if args.agent_md_path:
-        instance.agent_md_path = Path(args.agent_md_path).expanduser().resolve()
-    REGISTRY.save_instance(args.name)
+    instance = command_createskills(
+        name=args.name,
+        paths=path_values,
+        tool_description=args.tool_description,
+        agent_md_path=args.agent_md_path,
+    )
     print(f"Created skills instance: {instance.name}")
     print(f"Skills count: {len(instance.skills)}")
     return 0
@@ -522,14 +340,13 @@ def cmd_create_skills(args: argparse.Namespace) -> int:
 
 def cmd_list_skills_instances(args: argparse.Namespace) -> int:
     """List registered named skills collection instances."""
-    names = REGISTRY.list()
+    instances = command_listskills()
     if args.json:
         payload = []
-        for name in names:
-            instance = REGISTRY.get(name)
+        for instance in instances:
             payload.append(
                 {
-                    "name": name,
+                    "name": instance.name,
                     "skills_count": len(instance.skills),
                     "paths": [str(path) for path in instance.paths],
                     "tool_description": instance.tool_description,
@@ -541,15 +358,17 @@ def cmd_list_skills_instances(args: argparse.Namespace) -> int:
 
     color = _supports_color_output()
     width = 96
-    if not names:
+    if not instances:
         print("\n".join(_boxed_lines("MagicSkills Collections", ["No skills instances."], width=width, style="1;36", color=color)))
         return 0
 
     total_skills = 0
     sections: list[str] = []
-    sections.extend(_boxed_lines("MagicSkills Collections", [f"Total collections: {len(names)}"], width=width, style="1;36", color=color))
-    for name in names:
-        instance = REGISTRY.get(name)
+    sections.extend(
+        _boxed_lines("MagicSkills Collections", [f"Total collections: {len(instances)}"], width=width, style="1;36", color=color)
+    )
+    for instance in instances:
+        name = instance.name
         count = len(instance.skills)
         total_skills += count
         rows = [
@@ -567,7 +386,7 @@ def cmd_list_skills_instances(args: argparse.Namespace) -> int:
         _boxed_lines(
             "Summary",
             [
-                f"Total collections: {len(names)}",
+                f"Total collections: {len(instances)}",
                 f"Total skills across collections: {total_skills}",
             ],
             width=width,
@@ -581,60 +400,27 @@ def cmd_list_skills_instances(args: argparse.Namespace) -> int:
 
 def cmd_delete_skills_instance(args: argparse.Namespace) -> int:
     """Delete one named skills collection instance."""
-    REGISTRY.delete(args.name)
+    command_deleteskills(args.name)
     print(f"Deleted skills instance: {args.name}")
-    return 0
-
-
-def cmd_add_skill_to_instance(args: argparse.Namespace) -> int:
-    """Attach one skill into a named collection by target(name or path)."""
-    instance = REGISTRY.get(args.name)
-    raw_target = str(args.target).strip()
-    if not raw_target:
-        raise SystemExit("addskill2skills requires target: <name-or-path>")
-    if _looks_like_path_input(raw_target):
-        skill = _resolve_allskills_skill_by_path(raw_target, command_name="addskill2skills")
-    else:
-        skill = _resolve_allskills_skill(
-            raw_target,
-            path=None,
-            command_name="addskill2skills",
-            duplicate_hint="pass <skill-directory-path> as target",
-        )
-
-    target_base_dir = skill.base_dir.expanduser().resolve()
-    known_paths = {path.expanduser().resolve() for path in instance.paths}
-    if target_base_dir not in known_paths:
-        instance.paths.append(skill.base_dir)
-    try:
-        try:
-            instance.remove_skill(path=skill.path)
-        except TypeError:
-            instance.remove_skill(base_dir=skill.path)
-    except (KeyError, ValueError):
-        pass
-    instance.add_skill(skill)
-    REGISTRY.save_instance(args.name)
-    print(f"Added '{skill.name}' to '{args.name}' (path: {skill.path})")
     return 0
 
 
 def cmd_change_tool_description(args: argparse.Namespace) -> int:
     """Update tool description for a named collection."""
-    instance = REGISTRY.get(args.name)
-    instance.change_tool_description(args.description)
-    REGISTRY.save_instance(args.name)
+    instance = REGISTRY.get_skills(args.name)
+    command_change_tool_description(instance, args.description)
+    REGISTRY.saveskills()
     print(f"Updated tool description for skills instance: {args.name}")
     return 0
 
 
-def cmd_skill_for_all_agent(args: argparse.Namespace) -> int:
-    """Run Skill_For_All_Agent compatible action from CLI."""
+def cmd_skill_tool(args: argparse.Namespace) -> int:
+    """Run skill_tool compatible action from CLI."""
     if args.name:
-        skills = REGISTRY.get(args.name)
+        skills = REGISTRY.get_skills(args.name)
     else:
         skills = ALL_SKILLS
-    result = skills.skill_for_all_agent(args.action, args.arg)
+    result = command_skill_tool(skills, args.action, args.arg)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1
 
@@ -651,7 +437,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_read.add_argument("path", help="File path or skill name")
     p_read.set_defaults(func=cmd_read)
 
-    p_exec = sub.add_parser("execskill", help="Execute command with all skills environments")
+    p_exec = sub.add_parser("execskill", help="Execute command")
     p_exec.add_argument("command", nargs=argparse.REMAINDER, help="Command to run after --")
     p_exec.add_argument("--no-shell", action="store_true", help="Run without shell")
     p_exec.add_argument("--json", action="store_true", help="Output JSON result")
@@ -676,9 +462,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_install.add_argument("-y", "--yes", action="store_true", help="Overwrite without prompt")
     p_install.set_defaults(func=cmd_install)
 
-    p_create = sub.add_parser("createskill", help="Create skill skeleton")
-    p_create.add_argument("name", help="Skill name")
-    p_create.add_argument("--root", help="Target skills root directory")
+    p_create = sub.add_parser("createskill", help="Register one existing skill directory")
+    p_create.add_argument("path", help="Skill directory path (must contain SKILL.md)")
+    p_create.add_argument("--source", help="Install/discovery source to store in Skill metadata")
     p_create.set_defaults(func=cmd_create_skill)
 
     p_upload = sub.add_parser("uploadskill", help="Upload one skill to repository (default settings)")
@@ -688,11 +474,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_delete = sub.add_parser("deleteskill", help="Delete a skill by one target (name or path)")
     p_delete.add_argument("target", help="Skill name or skill directory path")
     p_delete.set_defaults(func=cmd_delete_skill)
-
-    p_delete_from_instance = sub.add_parser("deleteskill2skills", help="Remove one skill from a named skills collection")
-    p_delete_from_instance.add_argument("name", help="Skills instance name")
-    p_delete_from_instance.add_argument("target", help="Skill name or skill directory path")
-    p_delete_from_instance.set_defaults(func=cmd_delete_skill_from_instance)
 
     p_show = sub.add_parser("showskill", help="Show all content for one skill from Allskills")
     p_show.add_argument("target", help="Skill name or skill directory path")
@@ -713,21 +494,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_delete_skills.add_argument("name", help="Skills instance name")
     p_delete_skills.set_defaults(func=cmd_delete_skills_instance)
 
-    p_add_skill = sub.add_parser("addskill2skills", help="Add one skill into a skills collection")
-    p_add_skill.add_argument("name", help="Skills instance name")
-    p_add_skill.add_argument("target", help="Skill name or skill directory path")
-    p_add_skill.set_defaults(func=cmd_add_skill_to_instance)
-
     p_change_desc = sub.add_parser("changetooldescription", help="Update tool description on a skills collection")
     p_change_desc.add_argument("name", help="Skills instance name")
     p_change_desc.add_argument("description", help="New tool description")
     p_change_desc.set_defaults(func=cmd_change_tool_description)
 
-    p_tool = sub.add_parser("skill-for-all-agent", help="Run Skill_For_All_Agent action")
+    p_tool = sub.add_parser("skill-tool", help="Run skill_tool action")
     p_tool.add_argument("action", help="Action name")
     p_tool.add_argument("--arg", default="", help="Action argument")
     p_tool.add_argument("--name", help="Use a named skills instance")
-    p_tool.set_defaults(func=cmd_skill_for_all_agent)
+    p_tool.set_defaults(func=cmd_skill_tool)
 
     return parser
 

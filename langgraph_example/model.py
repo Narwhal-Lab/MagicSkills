@@ -33,11 +33,11 @@ class SkillInput(BaseModel):
     arg: str = Field("")
 
 def skill_tool_fn(action: str, arg: str = "") -> str:
-    result = my_skills.skill_for_all_agent(action, arg)
+    result = my_skills.skill_tool(action, arg)
     return json.dumps(result, ensure_ascii=False)
 
 skill_tool1 = StructuredTool.from_function(
-    func=my_skills.skill_for_all_agent, #skill_tool_fn,
+    func=my_skills.skill_tool, #skill_tool_fn,
     name="skill_tool",
     description=my_skills.tool_description,  # 直接用这里
     args_schema=SkillInput,
@@ -48,7 +48,7 @@ from langchain_core.tools import tool
 
 @tool("_skill_tool", description=my_skills.tool_description)
 def _skill_tool(action: str, arg: str = "") -> str:
-    return json.dumps(my_skills.skill_for_all_agent(action, arg), ensure_ascii=False)
+    return json.dumps(my_skills.skill_tool(action, arg), ensure_ascii=False)
 
 
 

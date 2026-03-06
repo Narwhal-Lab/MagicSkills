@@ -6,25 +6,26 @@ from pathlib import Path
 
 import pytest
 
-from magicskills.core.skill import Skill
-from magicskills.core.skills import Skills, discover_skills
+from magicskills.command.deleteskill import deleteskill as command_deleteskill
+from magicskills.type.skill import Skill
+from magicskills.type.skills import Skills
+from magicskills.utils.utils import skill_paths_to_skills
 
 
 def test_discover_skills_fixture() -> None:
     fixtures = Path(__file__).parent / "fixtures" / "skills"
-    skills = discover_skills([fixtures])
+    skills = skill_paths_to_skills([fixtures])
     assert len(skills) == 1
     skill = skills[0]
     assert skill.name == "demo"
     assert skill.path == fixtures / "demo"
     assert skill.base_dir == fixtures
     assert "Demo skill" in skill.description
-    assert skill.frontmatter["description"] == "Demo skill"
 
 
 def test_discover_single_skill_directory_path() -> None:
     skill_dir = Path(__file__).parent / "fixtures" / "skills" / "demo"
-    skills = discover_skills([skill_dir])
+    skills = skill_paths_to_skills([skill_dir])
     assert len(skills) == 1
     assert skills[0].name == "demo"
 
@@ -37,7 +38,7 @@ def test_discover_skills_allows_same_name_with_different_base_dir(tmp_path: Path
     (root_a / "same" / "SKILL.md").write_text("---\ndescription: same-a\n---\n", encoding="utf-8")
     (root_b / "same" / "SKILL.md").write_text("---\ndescription: same-b\n---\n", encoding="utf-8")
 
-    skills = discover_skills([root_a, root_b])
+    skills = skill_paths_to_skills([root_a, root_b])
     assert len(skills) == 2
     assert skills[0].name == "same"
     assert skills[1].name == "same"
@@ -81,6 +82,53 @@ def test_readskill_duplicate_name_requires_path(tmp_path: Path) -> None:
         skills.readskill("same")
 
 
+def test_uploadskill_accepts_skill_name(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "skills"
+    skill_dir = root / "demo"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text("---\ndescription: demo\n---\n", encoding="utf-8")
+
+    class _Result:
+        skill_name = "demo"
+        repo = "repo"
+        branch = "main"
+        remote_subpath = "skills/demo"
+        committed = True
+        pushed = True
+        push_remote = "fork"
+        push_branch = "branch"
+        pr_url = "url"
+        pr_created = True
+
+    captured: dict[str, object] = {}
+
+    def _fake_upload_skill_from_dir(*_args, **kwargs):  # noqa: ANN002, ANN003
+        captured.update(kwargs)
+        return _Result()
+
+    monkeypatch.setattr("magicskills.command.uploadskill.upload_skill_from_dir", _fake_upload_skill_from_dir)
+
+    skills = Skills(paths=[root])
+    result = skills.uploadskill("demo")
+
+    assert getattr(result, "skill_name", None) == "demo"
+    assert captured.get("source_dir") == skill_dir.resolve()
+    assert captured.get("create_pr") is True
+
+
+def test_uploadskill_duplicate_name_requires_path(tmp_path: Path) -> None:
+    root_a = tmp_path / "skills_a"
+    root_b = tmp_path / "skills_b"
+    (root_a / "same").mkdir(parents=True, exist_ok=True)
+    (root_b / "same").mkdir(parents=True, exist_ok=True)
+    (root_a / "same" / "SKILL.md").write_text("---\ndescription: same-a\n---\n", encoding="utf-8")
+    (root_b / "same" / "SKILL.md").write_text("---\ndescription: same-b\n---\n", encoding="utf-8")
+
+    skills = Skills(paths=[root_a, root_b])
+    with pytest.raises(ValueError, match="duplicated"):
+        skills.uploadskill("same")
+
+
 def test_showskill_output_is_beautified() -> None:
     fixtures = Path(__file__).parent / "fixtures" / "skills"
     skills = Skills(paths=[fixtures])
@@ -98,7 +146,7 @@ def test_legacy_import_path_still_available() -> None:
     assert LegacySkills is Skills
 
 
-def test_add_remove_skill_uses_path_for_identity(tmp_path: Path) -> None:
+def test_deleteskill_uses_path_for_identity(tmp_path: Path) -> None:
     base_a = tmp_path / "same_a"
     base_b = tmp_path / "same_b"
     base_a.mkdir(parents=True, exist_ok=True)
@@ -121,19 +169,22 @@ def test_add_remove_skill_uses_path_for_identity(tmp_path: Path) -> None:
         source=str(base_b.parent),
     )
 
-    skills = Skills(skills=[skill_a], paths=[])
-    skills.add_skill(skill_b)
+    skills = Skills(skill_list=[skill_a], paths=[])
+    skill_b_path = skill_b.path.expanduser().resolve()
+    if any(s.path.expanduser().resolve() == skill_b_path for s in skills.skill_list):
+        raise ValueError(f"Skill at path '{skill_b.path}' already exists in this collection")
+    skills.skill_list.append(skill_b)
     assert len(skills.skills) == 2
 
-    with pytest.raises(ValueError, match="Multiple skills named 'same'"):
-        skills.remove_skill(name="same")
+    with pytest.raises(ValueError, match="duplicated"):
+        command_deleteskill(skills, "same")
 
-    skills.remove_skill(name="same", path=base_a)
+    command_deleteskill(skills, str(base_a))
     assert len(skills.skills) == 1
     assert skills.skills[0].path == base_b
 
 
-def test_execskill_includes_all_collection_skill_environments(tmp_path: Path, monkeypatch) -> None:
+def test_execskill_does_not_include_collection_skill_environments(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "skills"
     a = root / "alpha"
     b = root / "beta"
@@ -169,17 +220,17 @@ def test_execskill_includes_all_collection_skill_environments(tmp_path: Path, mo
             captured.update(env)
         return _Completed()
 
-    monkeypatch.setattr("magicskills.core.skills.subprocess.run", _fake_run)
+    monkeypatch.setattr("magicskills.command.execskill.subprocess.run", _fake_run)
 
     skills = Skills(paths=[root])
     result = skills.execskill("echo ok")
 
     assert result.returncode == 0
-    assert captured.get("ALPHA_KEY") == "alpha"
-    assert captured.get("BETA_KEY") == "beta"
+    assert captured.get("ALPHA_KEY") is None
+    assert captured.get("BETA_KEY") is None
 
 
-def test_execskill_allows_call_env_to_override_collection_env(tmp_path: Path, monkeypatch) -> None:
+def test_execskill_ignores_call_env_argument(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "skills"
     a = root / "alpha"
     b = root / "beta"
@@ -215,10 +266,10 @@ def test_execskill_allows_call_env_to_override_collection_env(tmp_path: Path, mo
             captured.update(env)
         return _Completed()
 
-    monkeypatch.setattr("magicskills.core.skills.subprocess.run", _fake_run)
+    monkeypatch.setattr("magicskills.command.execskill.subprocess.run", _fake_run)
 
     skills = Skills(paths=[root])
     result = skills.execskill("echo ok", env={"SHARED_KEY": "from-call"})
 
     assert result.returncode == 0
-    assert captured.get("SHARED_KEY") == "from-call"
+    assert captured.get("SHARED_KEY") is None

@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from magicskills.core import installer as installer_module
-from magicskills.core.installer import create_skill, delete_skill, install, upload_skill
+from magicskills.command import install as installer_module
+from magicskills.command.install import create_skill, delete_skill, install, upload_skill
 
 
 def _make_skill(root: Path, name: str) -> Path:
@@ -108,7 +108,7 @@ def test_create_skill_adds_to_allskills(tmp_path: Path, monkeypatch) -> None:
     fake = _FakeAllSkills()
     monkeypatch.setattr(installer_module, "ALL_SKILLS", fake)
 
-    created = create_skill("demo", target_root=root)
+    created = create_skill("demo", base_dir=root)
 
     assert created == root / "demo"
     assert (created / "SKILL.md").exists()
@@ -125,7 +125,7 @@ def test_create_skill_rejects_non_skill_non_empty_directory(tmp_path: Path) -> N
     (conflict_dir / "random.txt").write_text("x", encoding="utf-8")
 
     with pytest.raises(FileExistsError, match="missing SKILL.md"):
-        create_skill("demo", target_root=root)
+        create_skill("demo", base_dir=root)
 
 
 def test_create_skill_existing_valid_skill_does_not_fill_scaffold(tmp_path: Path, monkeypatch) -> None:
@@ -154,7 +154,7 @@ def test_create_skill_existing_valid_skill_does_not_fill_scaffold(tmp_path: Path
     fake = _FakeAllSkills()
     monkeypatch.setattr(installer_module, "ALL_SKILLS", fake)
 
-    created = create_skill("demo", target_root=root)
+    created = create_skill("demo", base_dir=root)
 
     assert created == skill_dir
     assert not (skill_dir / "references").exists()

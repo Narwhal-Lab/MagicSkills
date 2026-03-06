@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True) # 创建后不可以变
 class Skill:
     """Single skill metadata and resolved filesystem context."""
 
@@ -19,23 +19,17 @@ class Skill:
     base_dir: Path
     # Install/discovery source (repo URL or local source path)
     source: str
-    context: str | None = None
     is_global: bool = False
     universal: bool = False
-    environment: Mapping[str, str] = field(default_factory=dict)
-    frontmatter: Mapping[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize skill metadata to a JSON-friendly dict."""
         return {
             "name": self.name,
             "description": self.description,
-            "context": self.context,
             "global": self.is_global,
             "universal": self.universal,
             "path": str(self.path),
             "baseDir": str(self.base_dir),
             "source": self.source,
-            "environment": dict(self.environment),
-            "frontmatter": dict(self.frontmatter),
         }
