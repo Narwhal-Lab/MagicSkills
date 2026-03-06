@@ -18,7 +18,7 @@ ALL_SKILLS_NAME = "Allskills"
 
 def _default_store_path() -> Path:
     """Default per-project path for collection registry storage."""
-    return Path.cwd() / REGISTRY_DIRNAME / REGISTRY_FILENAME
+    return Path.home() / REGISTRY_DIRNAME / REGISTRY_FILENAME
 
 
 class SkillsRegistry:

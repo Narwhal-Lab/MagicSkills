@@ -10,6 +10,7 @@ import pytest
 from magicskills import cli as cli_module
 from magicskills.cli import (
     build_parser,
+    cmd_create_skills,
     cmd_delete_skill,
     cmd_list_skills_instances,
     cmd_read,
@@ -25,6 +26,14 @@ def test_cli_has_collection_commands() -> None:
     args = parser.parse_args(["createskills", "demo", "--paths", "tests/fixtures/skills"])
     assert args.command == "createskills"
     assert args.name == "demo"
+
+
+def test_cli_createskills_accepts_skill_list() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["createskills", "demo", "--skill-list", "alpha", "beta"])
+    assert args.command == "createskills"
+    assert args.name == "demo"
+    assert args.skill_list == ["alpha", "beta"]
 
 
 def test_registry_persists_instances(tmp_path: Path) -> None:
@@ -97,6 +106,73 @@ def test_cli_install_accepts_skill_name_as_source() -> None:
     args = parser.parse_args(["install", "demo"])
     assert args.command == "install"
     assert args.source == "demo"
+
+
+def test_cmd_create_skills_resolves_skill_list(monkeypatch) -> None:
+    alpha = Skill(
+        name="alpha",
+        description="alpha",
+        path=Path("/tmp/alpha"),
+        base_dir=Path("/tmp"),
+        source="/tmp",
+    )
+    beta = Skill(
+        name="beta",
+        description="beta",
+        path=Path("/tmp/beta"),
+        base_dir=Path("/tmp"),
+        source="/tmp",
+    )
+
+    class _FakeAllSkills:
+        def __init__(self) -> None:
+            self._items = {
+                "alpha": alpha,
+                "beta": beta,
+            }
+
+        def get_skill(self, target: str | Path):
+            return self._items[str(target)]
+
+    class _Created:
+        name = "demo"
+        skills = [alpha, beta]
+
+    captured: dict[str, object] = {}
+
+    def _fake_command_createskills(**kwargs):  # noqa: ANN003
+        captured.update(kwargs)
+        return _Created()
+
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    monkeypatch.setattr(cli_module, "command_createskills", _fake_command_createskills)
+
+    exit_code = cmd_create_skills(
+        argparse.Namespace(
+            name="demo",
+            skill_list=["alpha", "beta"],
+            paths=None,
+            tool_description=None,
+            agent_md_path=None,
+        )
+    )
+
+    assert exit_code == 0
+    assert captured["skill_list"] == [alpha, beta]
+    assert captured["paths"] is None
+
+
+def test_cmd_create_skills_rejects_skill_list_with_paths() -> None:
+    with pytest.raises(SystemExit, match="--paths cannot be used with --skill-list"):
+        cmd_create_skills(
+            argparse.Namespace(
+                name="demo",
+                skill_list=["alpha"],
+                paths=["./skills"],
+                tool_description=None,
+                agent_md_path=None,
+            )
+        )
 
 
 def test_cli_install_accepts_custom_target() -> None:
@@ -417,4 +493,3 @@ def test_cmd_deleteskill_default_prunes_other_collections(monkeypatch, tmp_path:
     assert exit_code == 0
     assert fake_registry.named.remove_calls == [deleted_path]
     assert fake_registry.saved == ["team-a"]
-

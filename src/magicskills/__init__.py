@@ -16,7 +16,9 @@ from .command.execskill import execskill
 from .command.install import install
 from .command.listskill import listskill
 from .command.listskills import listskills
+from .command.loadskills import loadskills
 from .command.readskill import readskill
+from .command.saveskills import saveskills
 from .command.showskill import showskill
 from .command.skill_tool import skill_tool
 from .command.syncskills import syncskills
@@ -29,6 +31,7 @@ from .type.skillsregistry import ALL_SKILLS, REGISTRY, SkillsRegistry
 __version__ = "0.1.0"
 
 DEFAULT_SKILLS_ROOT = Path.cwd() / ".claude" / "skills"
+changetooldescription = change_tool_description
 
 __all__ = [
     "Skill",

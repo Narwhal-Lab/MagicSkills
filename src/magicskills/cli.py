@@ -196,6 +196,32 @@ def _skills_from_paths(paths: list[Path] | None) -> Skills:
     return Skills(paths=paths) if paths else ALL_SKILLS
 
 
+def _skill_list_from_args(values: Iterable[str] | None):
+    """Resolve optional skill targets from Allskills into concrete Skill objects."""
+    if not values:
+        return None
+
+    resolved = []
+    seen_paths: set[Path] = set()
+    for value in values:
+        try:
+            skill = ALL_SKILLS.get_skill(value)
+        except KeyError as exc:
+            message = str(exc)
+            if "Multiple skills named" in message:
+                raise SystemExit(
+                    f"createskills: skill target '{value}' is duplicated; pass skill directory path.\n{message}"
+                ) from exc
+            raise SystemExit(f"createskills: skill target not found: {value}") from exc
+
+        resolved_path = skill.path.expanduser().resolve()
+        if resolved_path in seen_paths:
+            continue
+        seen_paths.add(resolved_path)
+        resolved.append(skill)
+    return resolved
+
+
 def cmd_list(args: argparse.Namespace) -> int:
     """List available skills."""
     _ = args
@@ -326,9 +352,13 @@ def cmd_show_skill(args: argparse.Namespace) -> int:
 def cmd_create_skills(args: argparse.Namespace) -> int:
     """Create one named skills collection instance."""
     paths = _paths_from_args(args.paths)
+    skill_list = _skill_list_from_args(args.skill_list)
+    if paths and skill_list:
+        raise SystemExit("--paths cannot be used with --skill-list")
     path_values = [str(path) for path in paths] if paths else None
     instance = command_createskills(
         name=args.name,
+        skill_list=skill_list,
         paths=path_values,
         tool_description=args.tool_description,
         agent_md_path=args.agent_md_path,
@@ -481,6 +511,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_create_skills = sub.add_parser("createskills", help="Create a named skills collection")
     p_create_skills.add_argument("name", help="Skills instance name")
+    p_create_skills.add_argument(
+        "--skill-list",
+        nargs="*",
+        help="Specific skills (name or skill directory path) for this collection",
+    )
     p_create_skills.add_argument("--paths", nargs="*", help="Custom paths for this collection")
     p_create_skills.add_argument("--tool-description", help="Tool description override")
     p_create_skills.add_argument("--agent-md-path", help="AGENTS.md path override")
