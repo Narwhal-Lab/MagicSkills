@@ -1,51 +1,86 @@
+"""Semantic Kernel agent example — progressive skill disclosure.
+
+Usage:
+    pip install semantic-kernel python-dotenv
+    python semantic_kernel_example/model.py
+
+Env vars (put in .env):
+    OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
+"""
+
+from __future__ import annotations
+
+import asyncio
 import json
-from magicskills.core.registry import ALL_SKILLS
-from magicskills.core.skills import Skills
 import os
 from pathlib import Path
 
-import asyncio
+from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from semantic_kernel.agents import ChatCompletionAgent
-from semantic_kernel.functions import kernel_function
 from semantic_kernel.connectors.ai.open_ai import OpenAIChatCompletion
+from semantic_kernel.functions import kernel_function
+
+from magicskills import ALL_SKILLS, Skills
+
+load_dotenv()
+
+# ── 1. 组装 Skills ─────────────────────────────────────────────
+skill_a = ALL_SKILLS.get_skill("pdf")
+skill_b = ALL_SKILLS.get_skill("c_2_ast")
+
+my_skills = Skills(
+    name="semantic_kernel_skills",
+    skill_list=[skill_a, skill_b],
+)
 
 
-SEMANTIC_KERNEL_MODEL = "SEMANTIC_KERNEL_MODEL"
-SEMANTIC_KERNEL_BASE_URL = "SEMANTIC_KERNEL_BASE_URL"
-SEMANTIC_KERNEL_API_KEY = "SEMANTIC_KERNEL_API_KEY"
-
-s1 = ALL_SKILLS.get_skill("pdf")
-s2 = ALL_SKILLS.get_skill("explain-code")
-my_skills = Skills(name="semantic-kernel-skills", skills=[s1, s2])
-
-
+# ── 2. 包装为 Semantic Kernel Plugin ──────────────────────────
 class MagicSkillsPlugin:
-    def __init__(self, skills_instance):
+    def __init__(self, skills_instance: Skills) -> None:
         self.skills = skills_instance
 
-    @kernel_function(name="magic_skills",description=my_skills.tool_description)
-    async def call_magic_skill(self, action: str, arg: str = "") -> str:
-        """调用MagicSkills的统一接口"""
-        result = self.skills.skill_for_all_agent(action, arg)
+    @kernel_function(
+        name="skill_tool",
+        description=my_skills.tool_description,
+    )
+    async def call_skill_tool(self, action: str, arg: str = "") -> str:
+        """Unified skill tool interface for MagicSkills."""
+        result = self.skills.skill_tool(action, arg)
         return json.dumps(result, ensure_ascii=False)
 
 
-async def main():
+# ── 3. 构建 agent 并运行 ──────────────────────────────────────
+async def main() -> None:
     chat_service = OpenAIChatCompletion(
-            ai_model_id=SEMANTIC_KERNEL_MODEL,
-            async_client = AsyncOpenAI(
-                api_key=SEMANTIC_KERNEL_API_KEY,
-                base_url=SEMANTIC_KERNEL_BASE_URL,
-                ),
-        )
+        ai_model_id=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        async_client=AsyncOpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            base_url=os.getenv("OPENAI_BASE_URL"),
+        ),
+    )
+
     agent = ChatCompletionAgent(
         service=chat_service,
-        instructions="You are a helpful assistant.",
+        instructions="You are a helpful assistant. Use tools to solve tasks.",
         plugins=[MagicSkillsPlugin(my_skills)],
     )
 
-    response = await agent.get_response(messages="Please use the skill_tool to list all available skills.")
+    # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
+    prompt = (
+        "Please help me convert the following C code into an AST.\n"
+        "First discover what skills are available, then read the relevant "
+        "skill instructions, and finally execute the conversion.\n\n"
+        "```c\n"
+        "#include <stdio.h>\n\n"
+        "int main() {\n"
+        '    puts(\"Hello from agent\");\n'
+        "    return 0;\n"
+        "}\n"
+        "```"
+    )
+
+    response = await agent.get_response(messages=prompt)
     print(response.content)
 
     log_file = Path(__file__).parent / "semantic_kernel_result.log"

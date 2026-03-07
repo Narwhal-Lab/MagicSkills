@@ -1,2 +1,2 @@
-'smolagents[litellm]'
-'smolagents[toolkit]'
+smolagents[litellm]
+python-dotenv

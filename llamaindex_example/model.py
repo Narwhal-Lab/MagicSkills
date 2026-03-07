@@ -1,49 +1,80 @@
+"""LlamaIndex ReAct agent example — progressive skill disclosure.
+
+Usage:
+    pip install llama-index-core llama-index-llms-openai python-dotenv
+    python llamaindex_example/model.py
+
+Env vars (put in .env):
+    OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
+"""
+
+from __future__ import annotations
+
 import asyncio
-from datetime import datetime
+import json
+import os
 from pathlib import Path
-from magicskills.core.registry import ALL_SKILLS
-from magicskills.core.skills import Skills
 
-from llama_index.core.tools import FunctionTool
-from llama_index.llms.deepseek import DeepSeek
-# 详见 https://docs.llamaindex.org.cn/en/stable/api_reference/llms/
+from dotenv import load_dotenv
 from llama_index.core.agent import ReActAgent
+from llama_index.core.tools import FunctionTool
+from llama_index.llms.openai import OpenAI
 
+from magicskills import ALL_SKILLS, Skills
 
-LLM_API_KEY = "LLM_API_KEY"
-LLM_MODEL = "LLM_MODEL"
-LLM_BASE_URL = "LLM_BASE_URL"
+load_dotenv()
 
-# 1. 加载技能
-s1 = ALL_SKILLS.get_skill("pdf")
-s2 = ALL_SKILLS.get_skill("explain-code")
-paths = sorted({s.base_dir for s in [s1, s2]}, key=lambda p: p.as_posix())
-my_skills = Skills(name="llamaindex-skills", skills=[s1, s2], paths=paths)
+# ── 1. 组装 Skills ─────────────────────────────────────────────
+skill_a = ALL_SKILLS.get_skill("pdf")
+skill_b = ALL_SKILLS.get_skill("c_2_ast")
 
-# 2. 创建LlamaIndex工具
-def magic_skills_tool(action: str, arg: str = "") -> str:
-    """MagicSkills unified tool interface"""
-    result = my_skills.skill_for_all_agent(action, arg)
-    return str(result)
-
-skill_tool = FunctionTool.from_defaults(
-    fn=magic_skills_tool,
-    name="skill_tool",
-    description=my_skills.tool_description
+my_skills = Skills(
+    name="llamaindex_skills",
+    skill_list=[skill_a, skill_b],
 )
 
-async def main():
-    llm = DeepSeek(
-        model=LLM_MODEL,
-        api_key=LLM_API_KEY,
-        base_url=LLM_BASE_URL
+
+# ── 2. 包装为 LlamaIndex tool ─────────────────────────────────
+def skill_tool_fn(action: str, arg: str = "") -> str:
+    """MagicSkills unified tool interface."""
+    result = my_skills.skill_tool(action, arg)
+    return json.dumps(result, ensure_ascii=False)
+
+
+skill_tool = FunctionTool.from_defaults(
+    fn=skill_tool_fn,
+    name="skill_tool",
+    description=my_skills.tool_description,
+)
+
+
+# ── 3. 构建 agent 并运行 ──────────────────────────────────────
+async def main() -> None:
+    llm = OpenAI(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        api_base=os.getenv("OPENAI_BASE_URL"),
     )
-    # 创建ReAct Agent 并测试对话
+
     agent = ReActAgent(llm=llm, tools=[skill_tool])
-    response = await agent.run("Please use the skill_tool tool to list all available skills.")
+
+    # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
+    response = await agent.run(
+        "Please help me convert the following C code into an AST.\n"
+        "First discover what skills are available, then read the relevant "
+        "skill instructions, and finally execute the conversion.\n\n"
+        "```c\n"
+        "#include <stdio.h>\n\n"
+        "int main() {\n"
+        '    puts(\"Hello from agent\");\n'
+        "    return 0;\n"
+        "}\n"
+        "```"
+    )
     print(response)
+
     log_file = Path(__file__).parent / "llamaindex_result.log"
-    with open(log_file, "a", encoding="utf-8") as f:
+    with open(log_file, "w", encoding="utf-8") as f:
         f.write(str(response))
 
 

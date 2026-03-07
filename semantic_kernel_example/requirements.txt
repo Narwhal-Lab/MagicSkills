@@ -1,1 +1,2 @@
 semantic-kernel
+python-dotenv
