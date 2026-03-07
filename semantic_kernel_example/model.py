@@ -67,7 +67,11 @@ async def main() -> None:
 
     agent = ChatCompletionAgent(
         service=chat_service,
-        instructions="You are a helpful assistant. Use tools to solve tasks.",
+        instructions=(
+            "You are a helpful assistant. Use the provided tools to solve tasks step by step. "
+            "Always use function calls to invoke tools. Never output raw XML or markup. "
+            "Complete all steps: listskill, readskill, execskill."
+        ),
         plugins=[MagicSkillsPlugin(my_skills)],
     )
 

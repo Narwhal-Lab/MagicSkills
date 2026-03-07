@@ -21,6 +21,8 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="repla
 from pathlib import Path
 
 from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
+from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_agentchat.ui import Console
 from autogen_core.models import ModelFamily
 from autogen_core.tools import FunctionTool
@@ -64,15 +66,25 @@ async def main() -> None:
             "family": ModelFamily.GPT_4O,
             "structured_output": True,
         },
-        temperature=0,
     )
 
     agent = AssistantAgent(
         name="assistant",
         model_client=model_client,
         tools=[magic_skill_tool],
-        system_message="Use tools to solve tasks. Always use the skill_tool_fn tool to perform actions. Do not stop until the task is complete.",
-        reflect_on_tool_use=True,
+        system_message=(
+            "You are a helpful assistant that uses tools to complete tasks step by step. "
+            "Always call the skill_tool_fn tool to perform actions. "
+            "You must complete ALL steps: first listskill, then readskill, then execskill. "
+            "Do NOT stop until you have executed all necessary tool calls and produced the final result. "
+            "When all steps are done and you have the final output, end your response with the word TERMINATE."
+        ),
+        reflect_on_tool_use=False,
+    )
+
+    team = RoundRobinGroupChat(
+        participants=[agent],
+        termination_condition=MaxMessageTermination(30) | TextMentionTermination("TERMINATE"),
     )
 
     # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
@@ -91,7 +103,7 @@ async def main() -> None:
 
     log_file = Path(__file__).parent / "autogen_result.log"
     try:
-        result = await Console(agent.run_stream(task=task), output_stats=True)
+        result = await Console(team.run_stream(task=task), output_stats=True)
         log_content = str(result.messages)
     except BaseException:
         log_content = "[ERROR] Agent run interrupted or failed."

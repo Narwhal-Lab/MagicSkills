@@ -1,1 +1,35 @@
-[ERROR] Agent run interrupted or failed.
+FileAST: 
+  Typedef: FILE, [], ['typedef']
+    TypeDecl: FILE, [], None
+      IdentifierType: ['int']
+  Decl: printf, [], [], [], []
+    FuncDecl: 
+      ParamList: 
+        Decl: fmt, ['const'], [], [], []
+          PtrDecl: []
+            TypeDecl: fmt, ['const'], None
+              IdentifierType: ['char']
+        EllipsisParam: 
+      TypeDecl: printf, [], None
+        IdentifierType: ['int']
+  Decl: puts, [], [], [], []
+    FuncDecl: 
+      ParamList: 
+        Decl: s, ['const'], [], [], []
+          PtrDecl: []
+            TypeDecl: s, ['const'], None
+              IdentifierType: ['char']
+      TypeDecl: puts, [], None
+        IdentifierType: ['int']
+  FuncDef: 
+    Decl: main, [], [], [], []
+      FuncDecl: 
+        TypeDecl: main, [], None
+          IdentifierType: ['int']
+    Compound: 
+      FuncCall: 
+        ID: puts
+        ExprList: 
+          Constant: string, "Hello from agent"
+      Return: 
+        Constant: int, 0
