@@ -1,8 +1,8 @@
 """CrewAI agent example — progressive skill disclosure.
 
 Usage:
-    pip install crewai crewai-tools python-dotenv
-    python crewai_example/model.py
+    uv run --with crewai --with crewai-tools --with python-dotenv \
+        python crewai_example/model.py
 
 Env vars (put in .env):
     OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
@@ -10,9 +10,14 @@ Env vars (put in .env):
 
 from __future__ import annotations
 
+import io
 import json
 import os
+import sys
 from pathlib import Path
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from crewai import Agent, Crew, LLM, Task
 from crewai.tools import tool

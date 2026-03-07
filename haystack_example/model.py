@@ -1,8 +1,8 @@
 """Haystack agent example — progressive skill disclosure.
 
 Usage:
-    pip install haystack-ai python-dotenv
-    python haystack_example/model.py
+    uv run --with haystack-ai --with python-dotenv \
+        python haystack_example/model.py
 
 Env vars (put in .env):
     OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
@@ -10,9 +10,14 @@ Env vars (put in .env):
 
 from __future__ import annotations
 
+import io
 import json
 import os
+import sys
 from pathlib import Path
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from dotenv import load_dotenv
 from haystack.components.agents import Agent

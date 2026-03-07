@@ -1,8 +1,8 @@
 """Semantic Kernel agent example — progressive skill disclosure.
 
 Usage:
-    pip install semantic-kernel python-dotenv
-    python semantic_kernel_example/model.py
+    uv run --with semantic-kernel --with python-dotenv \
+        python semantic_kernel_example/model.py
 
 Env vars (put in .env):
     OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
@@ -11,8 +11,13 @@ Env vars (put in .env):
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import os
+import sys
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 from pathlib import Path
 
 from dotenv import load_dotenv

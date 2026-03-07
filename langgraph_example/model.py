@@ -1,8 +1,8 @@
 """LangGraph ReAct agent example — progressive skill disclosure.
 
 Usage:
-    pip install langchain-openai langgraph python-dotenv
-    python langgraph_example/model.py
+    uv run --with langchain-openai --with langgraph --with python-dotenv \
+        python langgraph_example/model.py
 
 Env vars (put in .env):
     OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
@@ -10,9 +10,15 @@ Env vars (put in .env):
 
 from __future__ import annotations
 
+import io
 import json
 import os
+import sys
 from pathlib import Path
+
+# Windows 终端默认 GBK 编码，遇到 Unicode 特殊字符会崩溃
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, ToolMessage
