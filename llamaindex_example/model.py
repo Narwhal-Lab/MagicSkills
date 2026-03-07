@@ -1,7 +1,7 @@
 """LlamaIndex ReAct agent example — progressive skill disclosure.
 
 Usage:
-    uv run --with llama-index-core --with llama-index-llms-openai --with python-dotenv \
+    uv run --with llama-index-core --with llama-index-llms-openai-like --with python-dotenv \
         python llamaindex_example/model.py
 
 Env vars (put in .env):
@@ -23,7 +23,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from llama_index.core.agent import ReActAgent
 from llama_index.core.tools import FunctionTool
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai_like import OpenAILike
 
 from magicskills import ALL_SKILLS, Skills
 
@@ -55,32 +55,39 @@ skill_tool = FunctionTool.from_defaults(
 
 # ── 3. 构建 agent 并运行 ──────────────────────────────────────
 async def main() -> None:
-    llm = OpenAI(
+    llm = OpenAILike(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         api_key=os.getenv("OPENAI_API_KEY"),
         api_base=os.getenv("OPENAI_BASE_URL"),
+        is_chat_model=True,
+        is_function_calling_model=True,
     )
 
     agent = ReActAgent(llm=llm, tools=[skill_tool])
 
     # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
-    response = await agent.run(
-        "Please help me convert the following C code into an AST.\n"
-        "First discover what skills are available, then read the relevant "
-        "skill instructions, and finally execute the conversion.\n\n"
-        "```c\n"
-        "#include <stdio.h>\n\n"
-        "int main() {\n"
-        '    puts(\"Hello from agent\");\n'
-        "    return 0;\n"
-        "}\n"
-        "```"
-    )
-    print(response)
-
     log_file = Path(__file__).parent / "llamaindex_result.log"
-    with open(log_file, "w", encoding="utf-8") as f:
-        f.write(str(response))
+    try:
+        response = await agent.run(
+            "Please help me convert the following C code into an AST.\n"
+            "First discover what skills are available, then read the relevant "
+            "skill instructions, and finally execute the conversion.\n\n"
+            "```c\n"
+            "#include <stdio.h>\n\n"
+            "int main() {\n"
+            '    puts(\"Hello from agent\");\n'
+            "    return 0;\n"
+            "}\n"
+            "```"
+        )
+        print(response)
+        log_content = str(response)
+    except BaseException:
+        log_content = "[ERROR] Agent run interrupted or failed."
+        raise
+    finally:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(log_content)
 
 
 if __name__ == "__main__":
