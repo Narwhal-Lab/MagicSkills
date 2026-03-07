@@ -64,13 +64,15 @@ async def main() -> None:
             "family": ModelFamily.GPT_4O,
             "structured_output": True,
         },
+        temperature=0,
     )
 
     agent = AssistantAgent(
         name="assistant",
         model_client=model_client,
         tools=[magic_skill_tool],
-        system_message="Use tools to solve tasks.",
+        system_message="Use tools to solve tasks. Always use the skill_tool_fn tool to perform actions. Do not stop until the task is complete.",
+        reflect_on_tool_use=True,
     )
 
     # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
@@ -87,11 +89,16 @@ async def main() -> None:
         "```"
     )
 
-    result = await Console(agent.run_stream(task=task), output_stats=True)
-
     log_file = Path(__file__).parent / "autogen_result.log"
-    with open(log_file, "w", encoding="utf-8") as f:
-        f.write(str(result.messages))
+    try:
+        result = await Console(agent.run_stream(task=task), output_stats=True)
+        log_content = str(result.messages)
+    except BaseException:
+        log_content = "[ERROR] Agent run interrupted or failed."
+        raise
+    finally:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(log_content)
 
 
 if __name__ == "__main__":

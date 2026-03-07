@@ -55,37 +55,41 @@ def run_once(prompt: str) -> None:
 
     messages: list = [("user", prompt)]
     log_lines: list[str] = []
-
-    while True:
-        msg = llm_with_tools.invoke(messages)
-        messages.append(msg)
-
-        header = f"[AI] content={msg.content[:200] if msg.content else ''}"
-        print(header)
-        log_lines.append(header)
-
-        if not getattr(msg, "tool_calls", None):
-            break
-
-        for tc in msg.tool_calls:
-            tc_info = f"  -> tool_call: {tc['name']}({tc['args']})"
-            print(tc_info)
-            log_lines.append(tc_info)
-
-            tool_result = _skill_tool.invoke(tc["args"])
-            result_info = f"  <- result: {tool_result[:300]}"
-            print(result_info)
-            log_lines.append(result_info)
-
-            messages.append(ToolMessage(content=tool_result, tool_call_id=tc["id"]))
-
-    print("\n=== final ===")
-    print(msg.content)
-    log_lines.append(f"\n=== final ===\n{msg.content}")
-
     log_file = Path(__file__).parent / "langchain_result.log"
-    with open(log_file, "w", encoding="utf-8") as f:
-        f.write("\n".join(log_lines))
+    max_rounds = 25  # 防止 LLM 无限循环
+
+    try:
+        for _round in range(max_rounds):
+            msg = llm_with_tools.invoke(messages)
+            messages.append(msg)
+
+            header = f"[AI] content={msg.content[:200] if msg.content else ''}"
+            print(header)
+            log_lines.append(header)
+
+            if not getattr(msg, "tool_calls", None):
+                break
+
+            for tc in msg.tool_calls:
+                tc_info = f"  -> tool_call: {tc['name']}({tc['args']})"
+                print(tc_info)
+                log_lines.append(tc_info)
+
+                tool_result = _skill_tool.invoke(tc["args"])
+                result_info = f"  <- result: {tool_result[:300]}"
+                print(result_info)
+                log_lines.append(result_info)
+
+                messages.append(ToolMessage(content=tool_result, tool_call_id=tc["id"]))
+        else:
+            log_lines.append("\n[WARN] max rounds reached")
+
+        print("\n=== final ===")
+        print(msg.content)
+        log_lines.append(f"\n=== final ===\n{msg.content}")
+    finally:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(log_lines))
 
 
 if __name__ == "__main__":

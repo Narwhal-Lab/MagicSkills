@@ -85,12 +85,17 @@ async def main() -> None:
         "```"
     )
 
-    response = await agent.get_response(messages=prompt)
-    print(response.content)
-
     log_file = Path(__file__).parent / "semantic_kernel_result.log"
-    with open(log_file, "w", encoding="utf-8") as f:
-        f.write(str(response.content))
+    try:
+        response = await agent.get_response(messages=prompt)
+        print(response.content)
+        log_content = str(response.content)
+    except BaseException:
+        log_content = "[ERROR] Agent run interrupted or failed."
+        raise
+    finally:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(log_content)
 
 
 if __name__ == "__main__":

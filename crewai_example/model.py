@@ -1,7 +1,7 @@
 """CrewAI agent example — progressive skill disclosure.
 
 Usage:
-    uv run --with crewai --with crewai-tools --with python-dotenv \
+    uv run --with "crewai[litellm]" --with crewai-tools --with python-dotenv \
         python crewai_example/model.py
 
 Env vars (put in .env):
@@ -63,7 +63,7 @@ def skill_tool_fn(action: str, arg: str = "") -> str:
 # ── 3. 构建 agent 并运行 ──────────────────────────────────────
 if __name__ == "__main__":
     llm = LLM(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        model="openai/" + os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url=os.getenv("OPENAI_BASE_URL"),
     )
@@ -96,9 +96,14 @@ if __name__ == "__main__":
     )
 
     crew = Crew(agents=[researcher], tasks=[task])
-    result = crew.kickoff()
-    print(result)
-
     log_file = Path(__file__).parent / "crewai_result.log"
-    with open(log_file, "w", encoding="utf-8") as f:
-        f.write(str(result))
+    try:
+        result = crew.kickoff()
+        print(result)
+        log_content = str(result)
+    except BaseException:
+        log_content = "[ERROR] Agent run interrupted or failed."
+        raise
+    finally:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(log_content)

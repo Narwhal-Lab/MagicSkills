@@ -24,6 +24,7 @@ from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.tools import create_tool_from_function
+from haystack.utils import Secret
 
 from magicskills import ALL_SKILLS, Skills
 
@@ -58,13 +59,14 @@ if __name__ == "__main__":
     generator = OpenAIChatGenerator(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         api_base_url=os.getenv("OPENAI_BASE_URL"),
-        api_key=os.getenv("OPENAI_API_KEY"),
+        api_key=Secret.from_token(os.getenv("OPENAI_API_KEY")),
+        timeout=300.0,
     )
 
     agent = Agent(
         chat_generator=generator,
         tools=[magic_skills_tool],
-        max_agent_steps=10,
+        max_agent_steps=20,
     )
 
     # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
@@ -81,9 +83,15 @@ if __name__ == "__main__":
         "```"
     )
 
-    result = agent.run(messages=[ChatMessage.from_user(prompt)])
-    print(result["last_message"].text)
-
     log_file = Path(__file__).parent / "haystack_result.log"
-    with open(log_file, "w", encoding="utf-8") as f:
-        f.write(result["last_message"].text)
+    try:
+        result = agent.run(messages=[ChatMessage.from_user(prompt)])
+        last_msg = result.get("last_message")
+        log_content = last_msg.text if last_msg and last_msg.text else str(result)
+        print(log_content[:2000])
+    except BaseException:
+        log_content = "[ERROR] Agent run interrupted or failed."
+        raise
+    finally:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(log_content or "[EMPTY]")
