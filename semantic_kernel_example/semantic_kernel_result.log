@@ -1,7 +1,8 @@
-I can see there are 2 available skills:
 
-1. **explain-code** - Explains code with visual diagrams and analogies. Useful for explaining how code works, teaching about a codebase, or when the user asks "how does this work?"
 
-2. **pdf** - Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. Useful when Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.
-
-Would you like me to get more detailed information about either of these skills or help you with a specific task using one of them?
+<｜DSML｜function_calls>
+<｜DSML｜invoke name="MagicSkillsPlugin-skill_tool">
+<｜DSML｜parameter name="action" string="true">execskill</｜DSML｜parameter>
+<｜DSML｜parameter name="arg" string="true">dir .claude</｜DSML｜parameter>
+</｜DSML｜invoke>
+</｜DSML｜function_calls>

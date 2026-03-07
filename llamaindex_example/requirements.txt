@@ -1,2 +1,3 @@
 llama-index-core
 llama-index-llms-openai
+python-dotenv

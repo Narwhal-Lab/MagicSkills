@@ -1,123 +1,108 @@
-"""LangChain tool example for one Skills instance.
+"""LangChain tool-binding example — progressive skill disclosure.
 
 Usage:
-    python langchain_example/model.py
+    uv run --with langchain-openai --with python-dotenv \
+        python langchain_example/model.py
 
-Optional dependencies:
-    pip install langchain-core pydantic
+Env vars (put in .env):
+    OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
 """
 
 from __future__ import annotations
 
+import io
 import json
-from typing import Sequence
-from magicskills.core.registry import ALL_SKILLS
-from magicskills.core.skills import Skills
+import os
+import sys
+from pathlib import Path
 
-# 选中的 skill（有重名时要传 path）
-s1 = ALL_SKILLS.get_skill("pdf")
-s2 = ALL_SKILLS.get_skill("c_2_ast", path="/root/LLK/MagicSkills/.agent/skills/c_2_ast")
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-selected = [s1, s2]
-paths = sorted({s.base_dir for s in selected}, key=lambda p: p.as_posix())
-my_skills = Skills(name="Askills", skills=selected, paths=paths)
+from dotenv import load_dotenv
+from langchain_core.messages import ToolMessage
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
 
+from magicskills import ALL_SKILLS, Skills
 
-# 第一种方式
-import json
-from pydantic import BaseModel, Field
-from langchain_core.tools import StructuredTool
+load_dotenv()
 
-class SkillInput(BaseModel):
-    action: str = Field(...)
-    arg: str = Field("")
+# ── 1. 组装 Skills ─────────────────────────────────────────────
+skill_a = ALL_SKILLS.get_skill("pdf")
+skill_b = ALL_SKILLS.get_skill("c_2_ast")
 
-def skill_tool_fn(action: str, arg: str = "") -> str:
-    result = my_skills.skill_tool(action, arg)
-    return json.dumps(result, ensure_ascii=False)
-
-skill_tool1 = StructuredTool.from_function(
-    func=my_skills.skill_tool, #skill_tool_fn,
-    name="skill_tool",
-    description=my_skills.tool_description,  # 直接用这里
-    args_schema=SkillInput,
+my_skills = Skills(
+    name="langchain_skills",
+    skill_list=[skill_a, skill_b],
 )
 
-#第二种方式
-from langchain_core.tools import tool
-
-@tool("_skill_tool", description=my_skills.tool_description)
+# ── 2. 包装为 LangChain tool ───────────────────────────────────
+@tool("skill_tool", description=my_skills.tool_description)
 def _skill_tool(action: str, arg: str = "") -> str:
     return json.dumps(my_skills.skill_tool(action, arg), ensure_ascii=False)
 
 
-
-
-
-
-
-# 调用模型
-import os
-from langchain_openai import ChatOpenAI
-
-def run_once(prompt: str, use_structured: bool = True):
-
-    tool_to_bind = skill_tool1 if use_structured else _skill_tool
-
+# ── 3. 多轮 tool-calling loop ─────────────────────────────────
+def run_once(prompt: str) -> None:
     llm = ChatOpenAI(
-        model="gpt-4o-mini",   # 或你能用的模型名
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         temperature=0.0,
+        base_url=os.getenv("OPENAI_BASE_URL"),
+        api_key=os.getenv("OPENAI_API_KEY"),
     )
+    llm_with_tools = llm.bind_tools([_skill_tool])
 
-    # 3) 绑定工具：模型将“知道”有一个名为 skill_tool 的工具可用
-    llm_with_tools = llm.bind_tools([tool_to_bind])
+    messages: list = [("user", prompt)]
+    log_lines: list[str] = []
+    log_file = Path(__file__).parent / "langchain_result.log"
+    max_rounds = 25  # 防止 LLM 无限循环
 
-    # 4) 喂给模型提示词
-    msg = llm_with_tools.invoke(prompt)
+    try:
+        for _round in range(max_rounds):
+            msg = llm_with_tools.invoke(messages)
+            messages.append(msg)
 
-    # msg 是 AIMessage，里面可能包含 tool_calls
-    print("=== LLM raw message ===")
-    print(msg)
+            header = f"[AI] content={msg.content[:200] if msg.content else ''}"
+            print(header)
+            log_lines.append(header)
 
-    # 5) 如果模型发起了 tool_calls，你需要执行工具，并把结果再喂回模型
-    #    （LangGraph 通常用 ToolNode 自动做这一步；这里我们手写最小流程）
-    if getattr(msg, "tool_calls", None):
-        print("\n=== tool_calls ===")
-        print(msg.tool_calls)
+            if not getattr(msg, "tool_calls", None):
+                break
 
-        # 这里只处理第一个 tool_call（你也可以循环处理多个）
-        tc = msg.tool_calls[0]
-        name = tc["name"]
-        args = tc["args"]
+            for tc in msg.tool_calls:
+                tc_info = f"  -> tool_call: {tc['name']}({tc['args']})"
+                print(tc_info)
+                log_lines.append(tc_info)
 
-        # 执行工具：StructuredTool / tool 都支持 invoke(dict_args)
-        tool_result = tool_to_bind.invoke(args)
+                tool_result = _skill_tool.invoke(tc["args"])
+                result_info = f"  <- result: {tool_result[:300]}"
+                print(result_info)
+                log_lines.append(result_info)
 
-        print("\n=== tool_result ===")
-        print(tool_result)
+                messages.append(ToolMessage(content=tool_result, tool_call_id=tc["id"]))
+        else:
+            log_lines.append("\n[WARN] max rounds reached")
 
-        # 把工具结果作为 ToolMessage 发回模型，让它生成最终回答
-        # LangChain 会帮你构造 ToolMessage：用 llm_with_tools 再 invoke 一次
-        from langchain_core.messages import ToolMessage
-
-        final = llm_with_tools.invoke([
-            msg,
-            ToolMessage(content=tool_result, tool_call_id=tc["id"]),
-        ])
-
-        print("\n=== final answer ===")
-        print(final.content)
-    else:
-        # 没触发工具，直接输出模型回答
-        print("\n=== final answer (no tool) ===")
+        print("\n=== final ===")
         print(msg.content)
+        log_lines.append(f"\n=== final ===\n{msg.content}")
+    finally:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(log_lines))
 
 
 if __name__ == "__main__":
-    prompt = """
-你是一个会使用工具的助手。
-请调用 skill_tool 工具来执行 action="pdf" arg="把 /tmp/a.pdf 每页转成图片，并返回输出目录"。
-工具返回后，用一句话总结结果。
-""".strip()
-
-    run_once(prompt, use_structured=True)
+    # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
+    run_once(
+        "Please help me convert the following C code into an AST.\n"
+        "First discover what skills are available, then read the relevant "
+        "skill instructions, and finally execute the conversion.\n\n"
+        "```c\n"
+        "#include <stdio.h>\n\n"
+        "int main() {\n"
+        '    puts("Hello from agent");\n'
+        "    return 0;\n"
+        "}\n"
+        "```"
+    )
