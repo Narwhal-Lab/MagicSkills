@@ -66,15 +66,24 @@ if __name__ == "__main__":
         model="openai/" + os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url=os.getenv("OPENAI_BASE_URL"),
+        temperature=0.1,
+        num_retries=3,
     )
 
     researcher = Agent(
         role="technical researcher",
         goal="Research the available tools and choose the one that best suits the task",
-        backstory="technical expert",
+        backstory=(
+            "You are a technical expert running on Windows. "
+            "Use Windows commands (dir, cd, type) not Unix commands (ls, pwd, find). "
+            "The skills scripts are under .claude\\skills\\ relative to the project root."
+        ),
         tools=[skill_tool_fn],
         verbose=True,
         llm=llm,
+        function_calling_llm=llm,
+        max_iter=10,
+        respect_context_window=True,
     )
 
     # 任务设计：触发渐进式披露 (listskill → readskill → execskill)

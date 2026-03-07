@@ -3,6 +3,6 @@
 <｜DSML｜function_calls>
 <｜DSML｜invoke name="MagicSkillsPlugin-skill_tool">
 <｜DSML｜parameter name="action" string="true">execskill</｜DSML｜parameter>
-<｜DSML｜parameter name="arg" string="true">dir .claude</｜DSML｜parameter>
+<｜DSML｜parameter name="arg" string="true">dir</｜DSML｜parameter>
 </｜DSML｜invoke>
 </｜DSML｜function_calls>
