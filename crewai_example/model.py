@@ -1,29 +1,50 @@
+"""CrewAI agent example — progressive skill disclosure.
+
+Usage:
+    uv run --with "crewai[litellm]" --with crewai-tools --with python-dotenv \
+        python crewai_example/model.py
+
+Env vars (put in .env):
+    OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
+"""
+
+from __future__ import annotations
+
+import io
 import json
-import time
-from datetime import datetime
+import os
+import sys
 from pathlib import Path
-from magicskills.core.registry import ALL_SKILLS
-from magicskills.core.skills import Skills
 
-from crewai import Agent, Task, Crew
-from crewai import LLM
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-CREWAI_API_KEY = "CREWAI_API_KEY"
-CREWAI_MODEL = "CREWAI_MODEL"
-CREWAI_BASE_URL = "CREWAI_BASE_URL"
-
-s1 = ALL_SKILLS.get_skill("pdf")
-s2 = ALL_SKILLS.get_skill("explain-code")
-my_skills = Skills(name="crewai-skills", skills=[s1, s2])
-
+from crewai import Agent, Crew, LLM, Task
 from crewai.tools import tool
-@tool("MagicSkill_tool")
-def magic_tool(action: str, arg: str = "") -> str:
+from dotenv import load_dotenv
+
+from magicskills import ALL_SKILLS, Skills
+
+load_dotenv()
+
+# ── 1. 组装 Skills ─────────────────────────────────────────────
+skill_a = ALL_SKILLS.get_skill("pdf")
+skill_b = ALL_SKILLS.get_skill("c_2_ast")
+
+my_skills = Skills(
+    name="crewai_skills",
+    skill_list=[skill_a, skill_b],
+)
+
+
+# ── 2. 包装为 CrewAI tool ──────────────────────────────────────
+@tool("skill_tool")
+def skill_tool_fn(action: str, arg: str = "") -> str:
     """Unified skill tool. If you are not sure, you can first use the "listskill"
-    function of this tool to search for available skills. Then, determine which skill 
-    might be the most useful. After that, try to use the read the SKILL.md file under this 
-    skill path to get more detailed information. Finally, based on the content of this 
-    file, decide whether to read the documentation in other paths or directly execute 
+    function of this tool to search for available skills. Then, determine which skill
+    might be the most useful. After that, try to use the read the SKILL.md file under this
+    skill path to get more detailed information. Finally, based on the content of this
+    file, decide whether to read the documentation in other paths or directly execute
     the relevant script.
        Input format:
         {
@@ -35,36 +56,54 @@ def magic_tool(action: str, arg: str = "") -> str:
     - listskill
     - readskill:     arg = file path
     - execskill:   arg = full command string"""
-    result = my_skills.skill_for_all_agent(action, arg)
+    result = my_skills.skill_tool(action, arg)
     return json.dumps(result, ensure_ascii=False)
 
+
+# ── 3. 构建 agent 并运行 ──────────────────────────────────────
 if __name__ == "__main__":
     llm = LLM(
-        model=CREWAI_MODEL,
-        api_key=CREWAI_API_KEY,
-        base_url=CREWAI_BASE_URL,
+        model="openai/" + os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL"),
     )
 
     researcher = Agent(
-        role='technical researcher',
-        goal='Research the available tools and choose the one that best suits you',
-        backstory='technical expert',
-        tools=[magic_tool],
+        role="technical researcher",
+        goal="Research the available tools and choose the one that best suits the task",
+        backstory="technical expert",
+        tools=[skill_tool_fn],
         verbose=True,
-        llm=llm
+        llm=llm,
     )
 
-    task1 = Task(
-        description='List all available skills using the MagicSkills tool',
+    # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
+    task = Task(
+        description=(
+            "Please help me convert the following C code into an AST.\n"
+            "First discover what skills are available, then read the relevant "
+            "skill instructions, and finally execute the conversion.\n\n"
+            "```c\n"
+            "#include <stdio.h>\n\n"
+            "int main() {\n"
+            '    puts(\"Hello from agent\");\n'
+            "    return 0;\n"
+            "}\n"
+            "```"
+        ),
         agent=researcher,
-        expected_output='Skill list'
+        expected_output="The AST output of the provided C code.",
     )
 
-    crew = Crew(agents=[researcher], tasks=[task1])
-    result = crew.kickoff()
-    print(result)
-
+    crew = Crew(agents=[researcher], tasks=[task])
     log_file = Path(__file__).parent / "crewai_result.log"
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(str(result))
-
+    try:
+        result = crew.kickoff()
+        print(result)
+        log_content = str(result)
+    except BaseException:
+        log_content = "[ERROR] Agent run interrupted or failed."
+        raise
+    finally:
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(log_content)

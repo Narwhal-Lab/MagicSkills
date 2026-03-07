@@ -1,9 +1,49 @@
-Here are the available skills:
+The C code has been successfully converted to an Abstract Syntax Tree (AST). Here is the complete AST representation:
 
-1. **explain-code**
-   - Description: Explains code with visual diagrams and analogies. Use when explaining how code works, teaching about a codebase, or when the user asks "how does this work?"
-   - Path: `C:\Users\13978\.claude\skills\explain-code`
+```
+FileAST: 
+  Typedef: FILE, [], ['typedef']
+    TypeDecl: FILE, [], None
+      IdentifierType: ['int']
+  Decl: printf, [], [], [], []
+    FuncDecl: 
+      ParamList: 
+        Decl: fmt, ['const'], [], [], []
+          PtrDecl: []
+            TypeDecl: fmt, ['const'], None
+              IdentifierType: ['char']
+        EllipsisParam: 
+      TypeDecl: printf, [], None
+        IdentifierType: ['int']
+  Decl: puts, [], [], [], []
+    FuncDecl: 
+      ParamList: 
+        Decl: s, ['const'], [], [], []
+          PtrDecl: []
+            TypeDecl: s, ['const'], None
+              IdentifierType: ['char']
+      TypeDecl: puts, [], None
+        IdentifierType: ['int']
+  FuncDef: 
+    Decl: main, [], [], [], []
+      FuncDecl: 
+        TypeDecl: main, [], None
+          IdentifierType: ['int']
+    Compound: 
+      FuncCall: 
+        ID: puts
+        ExprList: 
+          Constant: string, "Hello from agent"
+      Return: 
+        Constant: int, 0
+```
 
-2. **pdf**
-   - Description: Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.
-   - Path: `D:\Python-learning\pythonProject\Skills-For-All-Agent\.claude\skills\pdf`
+The AST shows:
+1. Standard library declarations (FILE, printf, puts) from the fake libc headers
+2. The main function definition (FuncDef) with:
+   - Declaration of main returning int
+   - A compound block containing:
+     - A function call to puts with the string constant "Hello from agent"
+     - A return statement with the integer constant 0
+
+This tree structure represents the syntactic hierarchy of your C program, where each node corresponds to a language construct in the C grammar.

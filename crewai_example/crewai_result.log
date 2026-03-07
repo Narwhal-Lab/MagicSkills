@@ -1,7 +1,1 @@
-Skill list:
-1. name: explain-code
-   description: Explains code with visual diagrams and analogies. Use when explaining how code works, teaching about a codebase, or when the user asks "how does this work?
-   path: C:\Users\13978\.claude\skills\explain-code
-2. name: pdf
-   description: Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.
-   path: D:\Python-learning\pythonProject\Skills-For-All-Agent\.claude\skills\pdf
+[ERROR] Agent run interrupted or failed.
