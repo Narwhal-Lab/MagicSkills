@@ -1,13 +1,14 @@
 """Hugging Face smolagents example — progressive skill disclosure.
 
 Usage:
-    uv run --with "smolagents[litellm]" --with python-dotenv \
+    uv run --with "smolagents[openai]" --with python-dotenv \
         python transformers_smolagents_example/model.py
 
 Env vars (put in .env):
     OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
 
-Note: model name gets 'openai/' prefix for LiteLLM routing.
+Note: Uses CodeAgent (prompt-based tool calling) because DeepSeek V3.2
+      returns empty choices when the OpenAI `tools` API parameter is used.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -22,7 +24,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from dotenv import load_dotenv
-from smolagents import LiteLLMModel, Tool, ToolCallingAgent
+from smolagents import CodeAgent, OpenAIServerModel, Tool
 
 from magicskills import ALL_SKILLS, Skills
 
@@ -67,18 +69,30 @@ class MagicSkillsTool(Tool):
 magic_skills_tool = MagicSkillsTool(my_skills)
 
 
+# ── 2b. 修补 DeepSeek 的 </code 截断问题 ──────────────────────
+class PatchedOpenAIServerModel(OpenAIServerModel):
+    """Fix DeepSeek V3.2 outputting '</code' without closing '>'."""
+
+    def __call__(self, messages, **kwargs):
+        result = super().__call__(messages, **kwargs)
+        if hasattr(result, "content") and isinstance(result.content, str):
+            result.content = re.sub(r"</code(?!>)", "</code>", result.content)
+        return result
+
+
 # ── 3. 构建 agent 并运行 ──────────────────────────────────────
 if __name__ == "__main__":
-    model = LiteLLMModel(
-        model_id="openai/" + os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+    model = PatchedOpenAIServerModel(
+        model_id=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         api_base=os.getenv("OPENAI_BASE_URL"),
         api_key=os.getenv("OPENAI_API_KEY"),
     )
 
-    agent = ToolCallingAgent(
+    agent = CodeAgent(
         tools=[magic_skills_tool],
         model=model,
-        max_steps=30,
+        additional_authorized_imports=["json", "sys", "os", "subprocess", "pathlib"],
+        max_steps=50,
     )
 
     # 任务设计：触发渐进式披露 (listskill → readskill → execskill)
