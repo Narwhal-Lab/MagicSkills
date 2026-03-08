@@ -24,7 +24,7 @@ def createskill(
     source: str | Path | None = None,
 ) -> Path:
     """Register one existing skill directory into this collection."""
-    skill_dir = Path(skill_path).expanduser()
+    skill_dir = Path(skill_path).expanduser().resolve()
     if not skill_dir.exists():
         raise FileNotFoundError(f"Skill directory not found: {skill_dir}")
     if not is_directory_or_symlink_to_directory(skill_dir):
@@ -49,7 +49,7 @@ def createskill(
         universal=universal,
     )
 
-    from ..type.skillsregistry import ALL_SKILLS
+    from ..type.skillsregistry import ALL_SKILLS, REGISTRY
 
     all_skills = ALL_SKILLS
     created_skill_path = created_skill.path.expanduser().resolve()
@@ -69,4 +69,6 @@ def createskill(
     ]
     skills.skill_list.append(created_skill)
     skills.paths = skill_paths_from_skills(skills.skill_list)
+    REGISTRY.saveskills()
+
     return skill_dir

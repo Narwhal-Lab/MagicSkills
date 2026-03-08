@@ -11,9 +11,12 @@ from magicskills import cli as cli_module
 from magicskills.cli import (
     build_parser,
     cmd_create_skills,
+    cmd_create_skill_template,
     cmd_delete_skill,
     cmd_list_skills_instances,
+    cmd_load_skills,
     cmd_read,
+    cmd_save_skills,
     cmd_upload_skill,
 )
 from magicskills.type.skillsregistry import SkillsRegistry
@@ -34,6 +37,25 @@ def test_cli_createskills_accepts_skill_list() -> None:
     assert args.command == "createskills"
     assert args.name == "demo"
     assert args.skill_list == ["alpha", "beta"]
+
+
+def test_cli_saveskills_accepts_optional_path() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["saveskills", "./collections.json"])
+
+    assert args.command == "saveskills"
+    assert args.path == "./collections.json"
+    assert args.func is cmd_save_skills
+
+
+def test_cli_loadskills_accepts_optional_path_and_json() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["loadskills", "./collections.json", "--json"])
+
+    assert args.command == "loadskills"
+    assert args.path == "./collections.json"
+    assert args.json is True
+    assert args.func is cmd_load_skills
 
 
 def test_registry_persists_instances(tmp_path: Path) -> None:
@@ -106,6 +128,16 @@ def test_cli_install_accepts_skill_name_as_source() -> None:
     args = parser.parse_args(["install", "demo"])
     assert args.command == "install"
     assert args.source == "demo"
+
+
+def test_cli_createskill_template_parsing() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["createskill_template", "demo", "./skills"])
+
+    assert args.command == "createskill_template"
+    assert args.name == "demo"
+    assert args.base_dir == "./skills"
+    assert args.func is cmd_create_skill_template
 
 
 def test_cmd_create_skills_resolves_skill_list(monkeypatch) -> None:
@@ -307,6 +339,22 @@ def test_cmd_listskills_output_is_beautified(capsys: pytest.CaptureFixture[str],
     assert "- name: beta" in out
     assert "Total collections: 2" in out
     assert "Total skills across collections: 3" in out
+
+
+def test_boxed_lines_handles_multiline_rows() -> None:
+    lines = cli_module._boxed_lines("Demo", ["alpha\nbeta gamma"], width=24, style="1;33", color=False)
+
+    assert all("\n" not in line for line in lines)
+    assert all(line.startswith(("+", "|")) for line in lines)
+    assert any("alpha" in line for line in lines)
+    assert any("beta gamma" in line for line in lines)
+
+
+def test_default_tool_description_is_dedented() -> None:
+    description_lines = Skills().tool_description.splitlines()
+
+    assert description_lines[1].startswith("function of this tool")
+    assert not description_lines[1].startswith("    function")
 
 
 def test_cmd_uploadskill_reports_duplicate_name_path_hint(monkeypatch) -> None:

@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from magicskills.command.change_tool_description import change_tool_description as command_change_tool_description
+from magicskills.command.createskill import createskill as command_createskill
 from magicskills.command.deleteskill import deleteskill as command_deleteskill
 from magicskills.type.skill import Skill
 from magicskills.type.skills import Skills
@@ -144,6 +146,51 @@ def test_legacy_import_path_still_available() -> None:
     from magicskills.skills import Skills as LegacySkills
 
     assert LegacySkills is Skills
+
+
+def test_createskill_persists_registry(tmp_path: Path, monkeypatch) -> None:
+    skill_dir = tmp_path / "skills" / "demo"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text("---\ndescription: demo\n---\n", encoding="utf-8")
+
+    class _FakeRegistry:
+        def __init__(self) -> None:
+            self.saved = 0
+
+        def saveskills(self):
+            self.saved += 1
+            return Path("/tmp/collections.json")
+
+    fake_registry = _FakeRegistry()
+    skills = Skills(name="Allskills")
+    monkeypatch.setattr("magicskills.type.skillsregistry.REGISTRY", fake_registry)
+    monkeypatch.setattr("magicskills.type.skillsregistry.ALL_SKILLS", skills)
+
+    created = command_createskill(skills, skill_dir)
+
+    assert created == skill_dir
+    assert fake_registry.saved == 1
+    assert len(skills.skills) == 1
+    assert skills.skills[0].name == "demo"
+
+
+def test_change_tool_description_persists_registry(monkeypatch) -> None:
+    class _FakeRegistry:
+        def __init__(self) -> None:
+            self.saved = 0
+
+        def saveskills(self):
+            self.saved += 1
+            return Path("/tmp/collections.json")
+
+    fake_registry = _FakeRegistry()
+    skills = Skills(name="demo")
+    monkeypatch.setattr("magicskills.type.skillsregistry.REGISTRY", fake_registry)
+
+    command_change_tool_description(skills, "updated description")
+
+    assert skills.tool_description == "updated description"
+    assert fake_registry.saved == 1
 
 
 def test_deleteskill_uses_path_for_identity(tmp_path: Path) -> None:

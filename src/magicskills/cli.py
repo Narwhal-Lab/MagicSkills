@@ -6,17 +6,20 @@ Each subcommand maps to exactly one concrete feature.
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import os
 import platform
 import shutil
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 from typing import Iterable
 
 from .command.install import install
 from .command.createskill import createskill as command_createskill
+from .command.createskill_template import createskill_template as command_createskill_template
 from .command.change_tool_description import change_tool_description as command_change_tool_description
 from .command.execskill import execskill as command_execskill
 from .command.listskill import listskill as command_listskill
@@ -27,8 +30,10 @@ from .command.uploadskill import uploadskill as command_uploadskill
 from .command.showskill import showskill as command_showskill
 from .command.createskills import createskills as command_createskills
 from .command.listskills import listskills as command_listskills
+from .command.loadskills import loadskills as command_loadskills
 from .command.deleteskills import deleteskills as command_deleteskills
 from .command.deleteskill import deleteskill as command_deleteskill
+from .command.saveskills import saveskills as command_saveskills
 from .type.skillsregistry import ALL_SKILLS, REGISTRY
 from .type.skills import Skills
 from .utils.utils import normalize_paths
@@ -183,10 +188,19 @@ def _boxed_lines(title: str, rows: list[str], *, width: int, style: str, color: 
         _paint(border, style, color),
     ]
     inner_width = width - 4
+    wrapper = textwrap.TextWrapper(
+        width=inner_width,
+        break_long_words=True,
+        break_on_hyphens=False,
+        replace_whitespace=False,
+        drop_whitespace=False,
+    )
     for row in rows:
-        chunks = [row[i : i + inner_width] for i in range(0, len(row), inner_width)] or [""]
-        for chunk in chunks:
-            output.append(f"| {chunk.ljust(inner_width)} |")
+        row_lines = str(row).splitlines() or [""]
+        for row_line in row_lines:
+            chunks = wrapper.wrap(row_line.expandtabs(4)) or [""]
+            for chunk in chunks:
+                output.append(f"| {chunk.ljust(inner_width)} |")
     output.append(_paint(border, style, color))
     return output
 
@@ -194,6 +208,76 @@ def _boxed_lines(title: str, rows: list[str], *, width: int, style: str, color: 
 def _skills_from_paths(paths: list[Path] | None) -> Skills:
     """Build a Skills collection from custom paths or the default Allskills instance."""
     return Skills(paths=paths) if paths else ALL_SKILLS
+
+
+def _serialize_skills_instances(instances: list[Skills]) -> list[dict[str, object]]:
+    """Convert named skills collections into JSON-safe payload."""
+    payload = []
+    for instance in instances:
+        payload.append(
+            {
+                "name": instance.name,
+                "skills_count": len(instance.skills),
+                "paths": [str(path) for path in instance.paths],
+                "tool_description": instance.tool_description,
+                "agent_md_path": str(instance.agent_md_path),
+            }
+        )
+    return payload
+
+
+def _print_skills_instances(instances: list[Skills], *, json_output: bool) -> None:
+    """Render named skills collections in text or JSON form."""
+    if json_output:
+        print(json.dumps(_serialize_skills_instances(instances), ensure_ascii=False, indent=2))
+        return
+
+    color = _supports_color_output()
+    width = 96
+    if not instances:
+        print(
+            "\n".join(
+                _boxed_lines("MagicSkills Collections", ["No skills instances."], width=width, style="1;36", color=color)
+            )
+        )
+        return
+
+    total_skills = 0
+    sections: list[str] = []
+    sections.extend(
+        _boxed_lines("MagicSkills Collections", [f"Total collections: {len(instances)}"], width=width, style="1;36", color=color)
+    )
+    for instance in instances:
+        name = instance.name
+        count = len(instance.skills)
+        total_skills += count
+        description = inspect.cleandoc(instance.tool_description or "")
+        description_lines = description.splitlines() or ["(none)"]
+        rows = [
+            f"- name: {name}",
+            f"skills: {count}",
+            f"agent_md_path: {instance.agent_md_path}",
+            f"paths: {', '.join(str(path) for path in instance.paths) if instance.paths else '(none)'}",
+            f"tool_description: {description_lines[0]}",
+            *[f"  {line}" for line in description_lines[1:]],
+        ]
+        sections.append("")
+        sections.extend(_boxed_lines(f"Collection {name}", rows, width=width, style="1;33", color=color))
+
+    sections.append("")
+    sections.extend(
+        _boxed_lines(
+            "Summary",
+            [
+                f"Total collections: {len(instances)}",
+                f"Total skills across collections: {total_skills}",
+            ],
+            width=width,
+            style="1;35",
+            color=color,
+        )
+    )
+    print("\n".join(sections))
 
 
 def _skill_list_from_args(values: Iterable[str] | None):
@@ -295,6 +379,13 @@ def cmd_create_skill(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_create_skill_template(args: argparse.Namespace) -> int:
+    """Create a standard skill scaffold under one base directory."""
+    path = command_createskill_template(args.name, args.base_dir)
+    print(f"Created template: {path}")
+    return 0
+
+
 def cmd_upload_skill(args: argparse.Namespace) -> int:
     """Upload one skill with default fork -> push -> PR workflow."""
     for attempt in range(4):
@@ -371,60 +462,14 @@ def cmd_create_skills(args: argparse.Namespace) -> int:
 def cmd_list_skills_instances(args: argparse.Namespace) -> int:
     """List registered named skills collection instances."""
     instances = command_listskills()
-    if args.json:
-        payload = []
-        for instance in instances:
-            payload.append(
-                {
-                    "name": instance.name,
-                    "skills_count": len(instance.skills),
-                    "paths": [str(path) for path in instance.paths],
-                    "tool_description": instance.tool_description,
-                    "agent_md_path": str(instance.agent_md_path),
-                }
-            )
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-        return 0
+    _print_skills_instances(instances, json_output=args.json)
+    return 0
 
-    color = _supports_color_output()
-    width = 96
-    if not instances:
-        print("\n".join(_boxed_lines("MagicSkills Collections", ["No skills instances."], width=width, style="1;36", color=color)))
-        return 0
 
-    total_skills = 0
-    sections: list[str] = []
-    sections.extend(
-        _boxed_lines("MagicSkills Collections", [f"Total collections: {len(instances)}"], width=width, style="1;36", color=color)
-    )
-    for instance in instances:
-        name = instance.name
-        count = len(instance.skills)
-        total_skills += count
-        rows = [
-            f"- name: {name}",
-            f"skills: {count}",
-            f"agent_md_path: {instance.agent_md_path}",
-            f"paths: {', '.join(str(path) for path in instance.paths) if instance.paths else '(none)'}",
-            f"tool_description: {instance.tool_description}",
-        ]
-        sections.append("")
-        sections.extend(_boxed_lines(f"Collection {name}", rows, width=width, style="1;33", color=color))
-
-    sections.append("")
-    sections.extend(
-        _boxed_lines(
-            "Summary",
-            [
-                f"Total collections: {len(instances)}",
-                f"Total skills across collections: {total_skills}",
-            ],
-            width=width,
-            style="1;35",
-            color=color,
-        )
-    )
-    print("\n".join(sections))
+def cmd_load_skills(args: argparse.Namespace) -> int:
+    """Load registry state from disk and display loaded collections."""
+    instances = command_loadskills(args.path)
+    _print_skills_instances(instances, json_output=args.json)
     return 0
 
 
@@ -435,11 +480,16 @@ def cmd_delete_skills_instance(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_save_skills(args: argparse.Namespace) -> int:
+    """Persist registry state to disk."""
+    print(command_saveskills(args.path))
+    return 0
+
+
 def cmd_change_tool_description(args: argparse.Namespace) -> int:
     """Update tool description for a named collection."""
     instance = REGISTRY.get_skills(args.name)
     command_change_tool_description(instance, args.description)
-    REGISTRY.saveskills()
     print(f"Updated tool description for skills instance: {args.name}")
     return 0
 
@@ -497,6 +547,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_create.add_argument("--source", help="Install/discovery source to store in Skill metadata")
     p_create.set_defaults(func=cmd_create_skill)
 
+    p_create_template = sub.add_parser("createskill_template", help="Create a standard skill scaffold")
+    p_create_template.add_argument("name", help="Skill name")
+    p_create_template.add_argument("base_dir", help="Skills root directory")
+    p_create_template.set_defaults(func=cmd_create_skill_template)
+
     p_upload = sub.add_parser("uploadskill", help="Upload one skill to repository (default settings)")
     p_upload.add_argument("source", help="Skill name (Allskills) or local skill directory path")
     p_upload.set_defaults(func=cmd_upload_skill)
@@ -525,9 +580,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_list_skills.add_argument("--json", action="store_true", help="JSON output")
     p_list_skills.set_defaults(func=cmd_list_skills_instances)
 
+    p_load_skills = sub.add_parser("loadskills", help="Load registry from disk")
+    p_load_skills.add_argument("path", nargs="?", help="Optional registry file path")
+    p_load_skills.add_argument("--json", action="store_true", help="JSON output")
+    p_load_skills.set_defaults(func=cmd_load_skills)
+
     p_delete_skills = sub.add_parser("deleteskills", help="Delete a named skills collection")
     p_delete_skills.add_argument("name", help="Skills instance name")
     p_delete_skills.set_defaults(func=cmd_delete_skills_instance)
+
+    p_save_skills = sub.add_parser("saveskills", help="Persist registry to disk")
+    p_save_skills.add_argument("path", nargs="?", help="Optional save output path")
+    p_save_skills.set_defaults(func=cmd_save_skills)
+
 
     p_change_desc = sub.add_parser("changetooldescription", help="Update tool description on a skills collection")
     p_change_desc.add_argument("name", help="Skills instance name")

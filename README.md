@@ -1541,6 +1541,7 @@ print(path)
 
 - 这个 API 注册的是“已有目录”，不会复制文件。
 - 如果你把 skill 注册到某个非 `ALL_SKILLS` 集合，同一 skill 也会同步加入 `ALL_SKILLS`。
+- 如果目标集合属于当前 `REGISTRY`，注册表会自动保存。
 
 ## `install()`
 
@@ -1604,7 +1605,7 @@ print(paths)
 补充说明：
 
 - 解析顺序与 CLI 一致：本地路径优先，其次是默认仓库 skill 名称，最后是 Git 仓库。
-- 安装完成后会把 skill 注册到当前进程中的 `ALL_SKILLS`。
+- 安装完成后会把 skill 注册到 `ALL_SKILLS`，并持久化到当前 `REGISTRY`。
 
 ## `uploadskill()`
 
@@ -1955,27 +1956,24 @@ changetooldescription(skills: Skills, description: str) -> None
 **功能示例**
 
 ```python
-from magicskills import REGISTRY, change_tool_description, saveskills
+from magicskills import REGISTRY, change_tool_description
 
 coder = REGISTRY.get_skills("coder")
 change_tool_description(coder, "Unified skill tool for coding and review tasks")
-saveskills()
 ```
 
 用兼容别名调用：
 
 ```python
-from magicskills import REGISTRY, changetooldescription, saveskills
+from magicskills import REGISTRY, changetooldescription
 
 coder = REGISTRY.get_skills("coder")
 changetooldescription(coder, "Unified skill tool")
-saveskills()
 ```
 
 **补充说明**
 
-- 这个 API 只修改内存对象本身。
-- 如果你希望把修改持久化到注册表，请继续调用 `saveskills()` 或 `REGISTRY.saveskills()`。
+- 如果目标集合属于当前 `REGISTRY`，这个 API 会自动把修改持久化到注册表。
 
 ## `skill_tool()`
 

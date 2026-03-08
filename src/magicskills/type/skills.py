@@ -6,6 +6,7 @@ action dispatch compatible with skill_tool semantics.
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 from typing import Iterable, Mapping
 
@@ -17,23 +18,26 @@ from ..utils.utils import (
     skill_paths_to_skills,
 )
 
-DEFAULT_TOOL_DESCRIPTION = (
-    '''Unified skill tool. If you are not sure, you can first use the "listskill"
-    function of this tool to search for available skills. Then, determine which skill 
-    might be the most useful. After that, try to use the read the SKILL.md file under this 
-    skill path to get more detailed information. Finally, based on the content of this 
-    file, decide whether to read the documentation in other paths or directly execute 
+DEFAULT_TOOL_DESCRIPTION = inspect.cleandoc(
+    """
+    Unified skill tool. If you are not sure, you can first use the "listskill"
+    function of this tool to search for available skills. Then, determine which skill
+    might be the most useful. After that, try to use the read the SKILL.md file under this
+    skill path to get more detailed information. Finally, based on the content of this
+    file, decide whether to read the documentation in other paths or directly execute
     the relevant script.
-       Input format:
-        {
-            "action": "<action_name>",
-            "arg": "<string argument>"
-        }
+
+    Input format:
+    {
+        "action": "<action_name>",
+        "arg": "<string argument>"
+    }
 
     Actions:
     - listskill
-    - readskill:     arg = file path
-    - execskill:   arg = full command string'''
+    - readskill: arg = file path
+    - execskill: arg = full command string
+    """
 )
 
 
