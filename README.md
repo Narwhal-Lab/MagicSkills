@@ -2,7 +2,7 @@
 
 <!-- 有 Logo 之后取消注释下行 -->
 
-<!-- <img src="./image/Logo.png" alt="MagicSkills" width="360" /> -->
+ <img src="./image/Logo.png" alt="MagicSkills" width="360" /> 
 
 # MagicSkills
 
