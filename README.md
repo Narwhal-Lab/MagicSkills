@@ -1154,7 +1154,7 @@ Skills(
 - `readskill(target)`
 - `uploadskill(target)`
 - `showskill(target)`
-- `execskill(command, env=None, shell=True, timeout=None, stream=False)`
+- `execskill(command, shell=True, timeout=None, stream=False)`
 - `change_tool_description(description)`
 - `syncskills(output_path=None)`
 - `skill_tool(action, arg="")`
@@ -1391,7 +1391,6 @@ print(showskill(ALL_SKILLS, "demo"))
 execskill(
     skills: Skills,
     command: str,
-    env: Mapping[str, str] | None = None,
     shell: bool = True,
     timeout: float | None = None,
     stream: bool = False,
@@ -1402,7 +1401,6 @@ execskill(
 
 - `skills`：当前 API 形态要求传入的 `Skills` 集合。
 - `command`：要执行的命令字符串。
-- `env`：保留参数；当前实现不会把它注入子进程环境。
 - `shell`：是否通过 shell 执行；默认 `True`。
 - `timeout`：超时时间，单位秒；不传表示不限制。
 - `stream`：是否直接把输出流式打印到当前终端；默认 `False`。
@@ -1419,7 +1417,7 @@ execskill(
 ```python
 from magicskills import ALL_SKILLS, execskill
 
-result = execskill(ALL_SKILLS, "echo hello", stream=False)
+result = execskill(ALL_SKILLS(), "echo hello", stream=False)
 print(result.returncode, result.stdout, result.stderr)
 ```
 
@@ -1428,7 +1426,7 @@ print(result.returncode, result.stdout, result.stderr)
 ```python
 from magicskills import ALL_SKILLS, execskill
 
-result = execskill(ALL_SKILLS, "python -c 'print(123)'", shell=False)
+result = execskill(ALL_SKILLS(), "python -c 'print(123)'", shell=False)
 print(result.stdout)
 ```
 
@@ -1437,7 +1435,7 @@ print(result.stdout)
 ```python
 from magicskills import ALL_SKILLS, execskill
 
-execskill(ALL_SKILLS, "pytest -q", stream=True)
+execskill(ALL_SKILLS(), "pytest -q", stream=True)
 ```
 
 带超时：
@@ -1445,7 +1443,7 @@ execskill(ALL_SKILLS, "pytest -q", stream=True)
 ```python
 from magicskills import ALL_SKILLS, execskill
 
-result = execskill(ALL_SKILLS, "sleep 1", timeout=2)
+result = execskill(ALL_SKILLS(), "sleep 1", timeout=2)
 print(result.returncode)
 ```
 

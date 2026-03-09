@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Iterable
 
 from .result import ExecResult
 from .skill import Skill
@@ -161,7 +161,6 @@ class Skills:
     def execskill(
         self,
         command: str,
-        env: Mapping[str, str] | None = None,
         shell: bool = True,
         timeout: float | None = None,
         stream: bool = False,
@@ -172,7 +171,6 @@ class Skills:
         return command_execskill(
             self,
             command=command,
-            env=env,
             shell=shell,
             timeout=timeout,
             stream=stream,

@@ -350,46 +350,10 @@ def test_execskill_does_not_include_collection_skill_environments(tmp_path: Path
     assert captured.get("BETA_KEY") is None
 
 
-def test_execskill_ignores_call_env_argument(tmp_path: Path, monkeypatch) -> None:
+def test_execskill_rejects_env_argument(tmp_path: Path) -> None:
     root = tmp_path / "skills"
-    a = root / "alpha"
-    b = root / "beta"
-    a.mkdir(parents=True, exist_ok=True)
-    b.mkdir(parents=True, exist_ok=True)
-    (a / "SKILL.md").write_text(
-        "---\n"
-        "description: alpha\n"
-        "environment:\n"
-        "  SHARED_KEY: from-alpha\n"
-        "---\n",
-        encoding="utf-8",
-    )
-    (b / "SKILL.md").write_text(
-        "---\n"
-        "description: beta\n"
-        "environment:\n"
-        "  SHARED_KEY: from-beta\n"
-        "---\n",
-        encoding="utf-8",
-    )
-
-    captured: dict[str, str] = {}
-
-    class _Completed:
-        returncode = 0
-        stdout = ""
-        stderr = ""
-
-    def _fake_run(*_args, **kwargs):  # noqa: ANN002, ANN003
-        env = kwargs.get("env")
-        if isinstance(env, dict):
-            captured.update(env)
-        return _Completed()
-
-    monkeypatch.setattr("magicskills.command.execskill.subprocess.run", _fake_run)
-
+    root.mkdir(parents=True, exist_ok=True)
     skills = Skills(paths=[root])
-    result = skills.execskill("echo ok", env={"SHARED_KEY": "from-call"})
 
-    assert result.returncode == 0
-    assert captured.get("SHARED_KEY") is None
+    with pytest.raises(TypeError):
+        skills.execskill("echo ok", env={"SHARED_KEY": "from-call"})  # type: ignore[call-arg]
