@@ -28,8 +28,8 @@ from magicskills import ALL_SKILLS, Skills
 load_dotenv()
 
 # ── 1. 组装 Skills ─────────────────────────────────────────────
-skill_a = ALL_SKILLS.get_skill("pdf")
-skill_b = ALL_SKILLS.get_skill("c_2_ast")
+skill_a = ALL_SKILLS().get_skill("pdf")
+skill_b = ALL_SKILLS().get_skill("c_2_ast")
 
 my_skills = Skills(
     name="crewai_skills",
@@ -38,45 +38,35 @@ my_skills = Skills(
 
 
 # ── 2. 包装为 CrewAI tool ──────────────────────────────────────
-@tool("skill_tool")
-def skill_tool_fn(action: str, arg: str = "") -> str:
-    """Unified skill tool. If you are not sure, you can first use the "listskill"
-    function of this tool to search for available skills. Then, determine which skill
-    might be the most useful. After that, try to use the read the SKILL.md file under this
-    skill path to get more detailed information. Finally, based on the content of this
-    file, decide whether to read the documentation in other paths or directly execute
-    the relevant script.
-       Input format:
-        {
-            "action": "<action_name>",
-            "arg": "<string argument>"
-        }
+from crewai.tools import BaseTool
 
-    Actions:
-    - listskill
-    - readskill:     arg = file path
-    - execskill:   arg = full command string"""
-    result = my_skills.skill_tool(action, arg)
-    return json.dumps(result, ensure_ascii=False)
+class SkillTool(BaseTool):
+    name: str = "skill_tool"
+    description: str = my_skills.tool_description
+
+    def _run(self, action: str, arg: str = "") -> str:
+        return json.dumps(my_skills.skill_tool(action, arg), ensure_ascii=False)
+
+skill_tool_fn = SkillTool()
+
 
 
 # ── 3. 构建 agent 并运行 ──────────────────────────────────────
 if __name__ == "__main__":
     llm = LLM(
-        model="openai/" + os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        model=os.getenv("OPENAI_MODEL"),
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url=os.getenv("OPENAI_BASE_URL"),
         temperature=0.1,
-        num_retries=3,
     )
 
     researcher = Agent(
         role="technical researcher",
-        goal="Research the available tools and choose the one that best suits the task",
+        goal="Use the available skills to solve the user's task with the minimum necessary steps",
         backstory=(
-            "You are a technical expert running on Windows. "
-            "Use Windows commands (dir, cd, type) not Unix commands (ls, pwd, find). "
-            "The skills scripts are under .claude\\skills\\ relative to the project root."
+            "You are a technical expert. Start by discovering available skills, then "
+            "read the most relevant skill instructions, and only then execute the "
+            "necessary command."
         ),
         tools=[skill_tool_fn],
         verbose=True,

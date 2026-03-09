@@ -103,7 +103,7 @@ def _install_and_sync(
     installed = [_copy_skill_dir(skill_dir, target_root, yes) for skill_dir in skill_dirs]
     for skill_dir in installed:
         command_createskill(
-            ALL_SKILLS,
+            ALL_SKILLS(),
             skill_path=skill_dir,
             source=source,
         )

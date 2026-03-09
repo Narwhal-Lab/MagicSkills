@@ -23,6 +23,16 @@ DEFAULT_REPO_SLUG = "Narwhal-Lab/MagicSkills"
 DEFAULT_SKILL_SUBDIR = "skills"
 
 
+def _command_details(stdout: str | None, stderr: str | None) -> str:
+    """Build a compact error details string from subprocess output."""
+    return ((stderr or "") + "\n" + (stdout or "")).strip()
+
+
+def _repo_name_from_slug(repo_slug: str) -> str:
+    """Extract repository name from `owner/name` slug."""
+    return repo_slug.rsplit("/", 1)[-1]
+
+
 def _default_push_branch(skill_name: str) -> str:
     """Generate a default upload branch name under `fix/` namespace."""
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", skill_name.strip()) or "skill"
@@ -56,15 +66,14 @@ def _ensure_gh_auth_status() -> None:
     except FileNotFoundError as exc:
         raise RuntimeError("`gh` CLI not found. Install GitHub CLI and run `gh auth login` first.") from exc
     except subprocess.CalledProcessError as exc:
-        details = ((exc.stderr or "") + "\n" + (exc.stdout or "")).strip()
+        details = _command_details(exc.stdout, exc.stderr)
         if details:
             raise RuntimeError(f"`gh auth status` failed. Please run `gh auth login` first.\n{details}") from exc
         raise RuntimeError("`gh auth status` failed. Please run `gh auth login` first.") from exc
 
 
-def _commit_identity_from_auth() -> tuple[str, str]:
-    """Resolve commit identity as (login, html_url) from gh auth."""
-    default_login = "MagicSkills"
+def _github_user_from_auth() -> tuple[str, str]:
+    """Resolve authenticated GitHub user metadata as (login, html_url)."""
     default_html_url = "https://github.com/Narwhal-Lab/MagicSkills"
 
     try:
@@ -75,14 +84,49 @@ def _commit_identity_from_auth() -> tuple[str, str]:
             text=True,
         )
         payload = json.loads(completed.stdout or "{}")
-        if isinstance(payload, dict):
-            login = str(payload.get("login", "")).strip()
-            html_url = str(payload.get("html_url", "")).strip()
-            return login or default_login, html_url or default_html_url
-    except (FileNotFoundError, subprocess.CalledProcessError, json.JSONDecodeError):
-        pass
+    except FileNotFoundError as exc:
+        raise RuntimeError("failed to query GitHub user via gh: `gh` CLI not found") from exc
+    except subprocess.CalledProcessError as exc:
+        details = _command_details(exc.stdout, exc.stderr)
+        if details:
+            raise RuntimeError(f"failed to query GitHub user via gh: {details}") from exc
+        raise RuntimeError("failed to query GitHub user via gh") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("failed to query GitHub user via gh: invalid JSON response") from exc
 
-    return default_login, default_html_url
+    if not isinstance(payload, dict):
+        raise RuntimeError("failed to query GitHub user via gh: invalid response payload")
+
+    login = str(payload.get("login", "")).strip()
+    if not login:
+        raise RuntimeError("failed to query GitHub user via gh: missing login")
+    html_url = str(payload.get("html_url", "")).strip()
+    return login, html_url or default_html_url
+
+
+def _ensure_fork_exists(repo_slug: str) -> None:
+    """Create fork when missing; tolerate already-existing forks."""
+    completed = subprocess.run(
+        ["gh", "repo", "fork", repo_slug, "--remote=false"],
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode == 0:
+        return
+
+    details = _command_details(completed.stdout, completed.stderr)
+    if "already exist" in details.lower():
+        return
+    raise RuntimeError(f"failed to ensure fork via gh: {details}")
+
+
+def _clone_fork_repo(owner_login: str, repo_slug: str, workdir: Path) -> None:
+    """Clone the authenticated user's fork into one explicit workdir."""
+    clone_url = f"https://github.com/{owner_login}/{_repo_name_from_slug(repo_slug)}.git"
+    subprocess.run(
+        ["git", "clone", clone_url, str(workdir)],
+        check=True,
+    )
 
 
 def uploadskill(skills: Skills | Path | str, target: str | Path | None = None) -> UploadResult:
@@ -119,26 +163,16 @@ def uploadskill(skills: Skills | Path | str, target: str | Path | None = None) -
     source_subdir = Path(DEFAULT_SKILL_SUBDIR)
     requested_push_branch = _default_push_branch(source_dir.name)
     commit_message = f"Fix: upload skill {source_dir.name}"
-    commit_author_login, commit_author_html_url = _commit_identity_from_auth()
+    fork_owner_login, commit_author_html_url = _github_user_from_auth()
+    commit_author_login = fork_owner_login
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
+        workdir = tmp_path / _repo_name_from_slug(repo_slug)
 
-        fork_result = subprocess.run(
-            ["gh", "repo", "fork", repo_slug, "--clone"],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
-        if fork_result.returncode != 0:
-            details = ((fork_result.stderr or "") + "\n" + (fork_result.stdout or "")).strip()
-            if "already exist" not in details.lower():
-                raise RuntimeError(f"failed to fork+clone repository via gh: {details}")
-
-        workdir = tmp_path / "MagicSkills"
-        if not workdir.exists():
-            raise RuntimeError("failed to locate cloned MagicSkills repository in temporary directory")
-
+        _ensure_fork_exists(repo_slug)
+        _clone_fork_repo(fork_owner_login, repo_slug, workdir)
+        subprocess.run(["git", "-C", str(workdir), "remote", "add", "upstream", repo_url], check=True)
         subprocess.run(["git", "-C", str(workdir), "fetch", "upstream"], check=True)
         subprocess.run(["git", "-C", str(workdir), "checkout", default_branch], check=True)
         subprocess.run(["git", "-C", str(workdir), "pull", "--rebase", "upstream", default_branch], check=True)

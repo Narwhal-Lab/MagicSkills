@@ -207,7 +207,7 @@ def _boxed_lines(title: str, rows: list[str], *, width: int, style: str, color: 
 
 def _skills_from_paths(paths: list[Path] | None) -> Skills:
     """Build a Skills collection from custom paths or the default Allskills instance."""
-    return Skills(paths=paths) if paths else ALL_SKILLS
+    return Skills(paths=paths) if paths else ALL_SKILLS()
 
 
 def _serialize_skills_instances(instances: list[Skills]) -> list[dict[str, object]]:
@@ -289,7 +289,7 @@ def _skill_list_from_args(values: Iterable[str] | None):
     seen_paths: set[Path] = set()
     for value in values:
         try:
-            skill = ALL_SKILLS.get_skill(value)
+            skill = ALL_SKILLS().get_skill(value)
         except KeyError as exc:
             message = str(exc)
             if "Multiple skills named" in message:
@@ -309,14 +309,14 @@ def _skill_list_from_args(values: Iterable[str] | None):
 def cmd_list(args: argparse.Namespace) -> int:
     """List available skills."""
     _ = args
-    print(command_listskill(ALL_SKILLS))
+    print(command_listskill(ALL_SKILLS()))
     return 0
 
 
 def cmd_read(args: argparse.Namespace) -> int:
     """Read one file by path or by skill name (reads SKILL.md from Allskills)."""
     try:
-        print(command_readskill(ALL_SKILLS, args.path))
+        print(command_readskill(ALL_SKILLS(), args.path))
     except (KeyError, ValueError, FileNotFoundError, OSError) as exc:
         raise SystemExit(str(exc)) from exc
     return 0
@@ -374,7 +374,7 @@ def cmd_install(args: argparse.Namespace) -> int:
 def cmd_create_skill(args: argparse.Namespace) -> int:
     """Register one existing skill directory into Allskills."""
     skill_path = Path(args.path).expanduser()
-    path = command_createskill(ALL_SKILLS, skill_path=skill_path, source=args.source)
+    path = command_createskill(ALL_SKILLS(), skill_path=skill_path, source=args.source)
     print(f"Registered: {path}")
     return 0
 
@@ -390,7 +390,7 @@ def cmd_upload_skill(args: argparse.Namespace) -> int:
     """Upload one skill with default fork -> push -> PR workflow."""
     for attempt in range(4):
         try:
-            result = command_uploadskill(ALL_SKILLS, args.source)
+            result = command_uploadskill(ALL_SKILLS(), args.source)
             break
         except (KeyError, ValueError, FileNotFoundError) as exc:
             raise SystemExit(str(exc)) from exc
@@ -420,7 +420,7 @@ def cmd_upload_skill(args: argparse.Namespace) -> int:
 def cmd_delete_skill(args: argparse.Namespace) -> int:
     """Delete skill by one unified target argument: name or path."""
     try:
-        path = command_deleteskill(ALL_SKILLS, str(args.target))
+        path = command_deleteskill(ALL_SKILLS(), str(args.target))
     except (KeyError, ValueError, FileNotFoundError) as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -434,7 +434,7 @@ def cmd_show_skill(args: argparse.Namespace) -> int:
     if not raw_target:
         raise SystemExit("showskill requires target: <name-or-path>")
     try:
-        print(command_showskill(ALL_SKILLS, raw_target))
+        print(command_showskill(ALL_SKILLS(), raw_target))
     except (KeyError, ValueError, FileNotFoundError) as exc:
         raise SystemExit(str(exc)) from exc
     return 0
@@ -499,7 +499,7 @@ def cmd_skill_tool(args: argparse.Namespace) -> int:
     if args.name:
         skills = REGISTRY.get_skills(args.name)
     else:
-        skills = ALL_SKILLS
+        skills = ALL_SKILLS()
     result = command_skill_tool(skills, args.action, args.arg)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1

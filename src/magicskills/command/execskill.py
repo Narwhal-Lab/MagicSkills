@@ -6,7 +6,7 @@ import json
 import shlex
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING
 
 from ..type.result import ExecResult
 
@@ -37,7 +37,6 @@ def parse_exec_command(arg: str) -> str:
 def execskill(
     skills: Skills,
     command: str,
-    env: Mapping[str, str] | None = None,
     shell: bool = True,
     timeout: float | None = None,
     stream: bool = False,
@@ -45,7 +44,7 @@ def execskill(
     """Execute shell command in current cwd."""
     if not command.strip():
         raise ValueError("execskill requires a command string")
-    _ = (env, skills)
+    _ = skills
 
     if shell:
         cmd = command

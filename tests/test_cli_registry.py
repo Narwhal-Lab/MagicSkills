@@ -112,6 +112,30 @@ def test_registry_create_without_paths_uses_allskills_skill_directories(tmp_path
     assert [path.resolve() for path in created.paths] == [alpha_dir.resolve(), beta_dir.resolve()]
 
 
+def test_registry_createskills_autoregisters_provided_skills_for_reload(tmp_path: Path) -> None:
+    store_path = tmp_path / "collections.json"
+    skill_dir = tmp_path / "demo"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text("---\ndescription: demo\n---\n", encoding="utf-8")
+
+    provided_skill = Skill(
+        name="demo",
+        description="demo",
+        path=skill_dir,
+        base_dir=skill_dir.parent,
+        source=str(skill_dir.parent),
+    )
+
+    registry = SkillsRegistry(store_path=store_path)
+    created = registry.createskills(name="team-c", skill_list=[provided_skill])
+
+    assert created.skills[0].path.resolve() == skill_dir.resolve()
+    assert registry.get_skills("Allskills").get_skill(str(skill_dir)).path.resolve() == skill_dir.resolve()
+
+    reloaded = SkillsRegistry(store_path=store_path)
+    assert reloaded.get_skills("team-c").skills[0].path.resolve() == skill_dir.resolve()
+
+
 def test_registry_always_contains_allskills(tmp_path: Path) -> None:
     registry = SkillsRegistry(store_path=tmp_path / "collections.json")
     assert "Allskills" in [item.name for item in registry.listskills()]
@@ -176,7 +200,8 @@ def test_cmd_create_skills_resolves_skill_list(monkeypatch) -> None:
         captured.update(kwargs)
         return _Created()
 
-    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    fake_all_skills = _FakeAllSkills()
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", lambda: fake_all_skills)
     monkeypatch.setattr(cli_module, "command_createskills", _fake_command_createskills)
 
     exit_code = cmd_create_skills(
@@ -281,7 +306,8 @@ def test_cmd_read_accepts_skill_name_from_allskills(
                 raise KeyError(str(target))
             return _SkillRef()
 
-    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    fake_all_skills = _FakeAllSkills()
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", lambda: fake_all_skills)
 
     exit_code = cmd_read(argparse.Namespace(path="demo"))
     assert exit_code == 0
@@ -296,7 +322,8 @@ def test_cmd_read_duplicate_skill_name_requires_path(monkeypatch) -> None:
             _ = target
             raise KeyError("Multiple skills named 'demo' found. Provide path. Candidates: a, b")
 
-    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    fake_all_skills = _FakeAllSkills()
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", lambda: fake_all_skills)
     with pytest.raises(SystemExit, match="please pass file path"):
         cmd_read(argparse.Namespace(path="demo"))
 
@@ -480,7 +507,8 @@ def test_cmd_deleteskill_requires_path_when_name_duplicated(monkeypatch) -> None
             _ = target
             raise KeyError("Multiple skills named 'dup' found. Provide path. Candidates: a, b")
 
-    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    fake_all_skills = _FakeAllSkills()
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", lambda: fake_all_skills)
 
     with pytest.raises(SystemExit, match="skill-directory-path"):
         cmd_delete_skill(argparse.Namespace(target="dup"))
@@ -521,7 +549,7 @@ def test_cmd_deleteskill_default_prunes_other_collections(monkeypatch, tmp_path:
 
         def get(self, name: str):
             if name == "Allskills":
-                return cli_module.ALL_SKILLS
+                return cli_module.ALL_SKILLS()
             if name == "team-a":
                 return self.named
             raise KeyError(name)
