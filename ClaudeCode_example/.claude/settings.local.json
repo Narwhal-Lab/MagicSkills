@@ -4,7 +4,7 @@
       "Bash(node:*)",
       "Bash(npm install:*)",
       "Bash(ls:*)",
-      "Bash(npm init:*)"
+      "Bash(pandoc:*)"
     ]
   }
 }

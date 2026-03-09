@@ -1,15 +1,4 @@
 {
-  "name": "windsurf_example",
-  "version": "1.0.0",
-  "description": "",
-  "main": "self_introduction.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "docx": "^9.6.0"
   }
