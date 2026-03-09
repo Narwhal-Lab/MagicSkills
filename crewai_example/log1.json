@@ -1,0 +1,103 @@
+python3 model.py 
+╭────────────────────────────── 🤖 Agent Started ───────────────────────────────╮
+│                                                                               │
+│  Agent: technical researcher                                                  │
+│                                                                               │
+│  Task: Please help me convert the following C code into an AST.               │
+│  First discover what skills are available, then read the relevant skill       │
+│  instructions, and finally execute the conversion.                            │
+│                                                                               │
+│  ```c                                                                         │
+│  #include <stdio.h>                                                           │
+│                                                                               │
+│  int main() {                                                                 │
+│      puts("Hello from agent");                                                │
+│      return 0;                                                                │
+│  }                                                                            │
+│  ```                                                                          │
+│                                                                               │
+╰───────────────────────────────────────────────────────────────────────────────╯
+
+Tool skill_tool executed with result: {"ok": true, "action": "listskill", "result": "1. name: c_2_ast\n   description: Parse C source code into an Abstract Syntax Tree (AST). Use when analyzing C programs, understanding code structure, pe...
+Tool skill_tool executed with result: {"ok": true, "action": "readskill", "result": "---\nname: c-to-ast\ndescription: Parse C source code into an Abstract Syntax Tree (AST). Use when analyzing C programs, understanding code structure, pe...
+Tool skill_tool executed with result: {"ok": true, "action": "execskill", "result": {"command": "cd skills_for_all_agent/skill/c_2_ast/scripts/ && python3 save_c.py --input \"#include <stdio.h>\\n\\nint main() {\\n    puts(\\\"Hello from ...
+Tool skill_tool executed with result: {"ok": true, "action": "execskill", "result": {"command": "cd /root/LLK/MagicSkills/crewai_example/.claude/skills/c_2_ast/scripts/ && python3 save_c.py --input \"#include <stdio.h>\\n\\nint main() {\\...
+Tool skill_tool executed with result: {"ok": true, "action": "execskill", "result": {"command": "cd /root/LLK/MagicSkills/crewai_example/.claude/skills/c_2_ast/scripts/ && echo '#include <stdio.h>\n\nint main() {\n    puts(\"Hello from ag...
+╭──────────────────────────── ✅ Agent Final Answer ────────────────────────────╮
+│                                                                               │
+│  Agent: technical researcher                                                  │
+│                                                                               │
+│  Final Answer:                                                                │
+│  FileAST:                                                                     │
+│    Typedef: FILE, [], ['typedef']                                             │
+│      TypeDecl: FILE, [], None                                                 │
+│        IdentifierType: ['int']                                                │
+│    Decl: printf, [], [], [], []                                               │
+│      FuncDecl:                                                                │
+│        ParamList:                                                             │
+│          Decl: fmt, ['const'], [], [], []                                     │
+│            PtrDecl: []                                                        │
+│              TypeDecl: fmt, ['const'], None                                   │
+│                IdentifierType: ['char']                                       │
+│          EllipsisParam:                                                       │
+│        TypeDecl: printf, [], None                                             │
+│          IdentifierType: ['int']                                              │
+│    Decl: puts, [], [], [], []                                                 │
+│      FuncDecl:                                                                │
+│        ParamList:                                                             │
+│          Decl: s, ['const'], [], [], []                                       │
+│            PtrDecl: []                                                        │
+│              TypeDecl: s, ['const'], None                                     │
+│                IdentifierType: ['char']                                       │
+│        TypeDecl: puts, [], None                                               │
+│          IdentifierType: ['int']                                              │
+│    FuncDef:                                                                   │
+│      Decl: main, [], [], [], []                                               │
+│        FuncDecl:                                                              │
+│          TypeDecl: main, [], None                                             │
+│            IdentifierType: ['int']                                            │
+│      Compound:                                                                │
+│        FuncCall:                                                              │
+│          ID: puts                                                             │
+│          ExprList:                                                            │
+│            Constant: string, "Hello from agent"                               │
+│        Return:                                                                │
+│          Constant: int, 0                                                     │
+│                                                                               │
+╰───────────────────────────────────────────────────────────────────────────────╯
+
+FileAST: 
+  Typedef: FILE, [], ['typedef']
+    TypeDecl: FILE, [], None
+      IdentifierType: ['int']
+  Decl: printf, [], [], [], []
+    FuncDecl: 
+      ParamList: 
+        Decl: fmt, ['const'], [], [], []
+          PtrDecl: []
+            TypeDecl: fmt, ['const'], None
+              IdentifierType: ['char']
+        EllipsisParam: 
+      TypeDecl: printf, [], None
+        IdentifierType: ['int']
+  Decl: puts, [], [], [], []
+    FuncDecl: 
+      ParamList: 
+        Decl: s, ['const'], [], [], []
+          PtrDecl: []
+            TypeDecl: s, ['const'], None
+              IdentifierType: ['char']
+      TypeDecl: puts, [], None
+        IdentifierType: ['int']
+  FuncDef: 
+    Decl: main, [], [], [], []
+      FuncDecl: 
+        TypeDecl: main, [], None
+          IdentifierType: ['int']
+    Compound: 
+      FuncCall: 
+        ID: puts
+        ExprList: 
+          Constant: string, "Hello from agent"
+      Return: 
+        Constant: int, 0
