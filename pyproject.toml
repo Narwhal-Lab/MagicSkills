@@ -21,7 +21,9 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 
-dependencies = []
+dependencies = [
+  "pycparser>=2.21",
+]
 
 [project.optional-dependencies]
 dev = [
