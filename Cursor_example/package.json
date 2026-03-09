@@ -1,0 +1,12 @@
+{
+  "name": "cursor-example",
+  "version": "1.0.0",
+  "description": "生成自我介绍 docx 文档",
+  "main": "generate_introduction.js",
+  "scripts": {
+    "generate": "node generate_introduction.js"
+  },
+  "dependencies": {
+    "docx": "^9.5.0"
+  }
+}
