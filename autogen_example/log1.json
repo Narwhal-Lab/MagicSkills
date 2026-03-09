@@ -1,0 +1,25 @@
+
+--- 0 | TextMessage ---
+{
+  "id": "fb32999e-ea53-4d0c-9df4-f9ad761dfcc6",
+  "source": "user",
+  "models_usage": null,
+  "metadata": {},
+  "created_at": "2026-03-09 16:42:40.722546+00:00",
+  "content": "我想了解很多 AST 知识。",
+  "type": "TextMessage"
+}
+
+--- 1 | TextMessage ---
+{
+  "id": "fa173119-2901-4cbb-82f3-1425dd92a68e",
+  "source": "assistant",
+  "models_usage": {
+    "prompt_tokens": 527,
+    "completion_tokens": 171
+  },
+  "metadata": {},
+  "created_at": "2026-03-09 16:42:47.065216+00:00",
+  "content": "如果您想了解关于抽象语法树（AST）的知识，我可以提供一些基本概念和信息。\n\n抽象语法树（Abstract Syntax Tree，简称AST）是源代码语法结构的一种树形表示。它以树状形式表现编程语言的语法结构，树上的每个节点都表示源代码中的一种结构。\n\nAST在编译器设计、代码分析、代码转换等领域都有广泛应用。通过AST，我们可以方便地对源代码进行分析、转换和优化。\n\n在AST中，叶子节点通常表示标识符、字面量、操作符等基本语法元素，而非叶子节点则表示表达式、语句、函数声明等复合结构。\n\n不同的编程语言有不同的AST结构，但基本原理是相似的。\n\n如果您有具体的问题或想了解特定的内容，请告诉我，我会尽量提供相关信息。\n\nTERMINATE",
+  "type": "TextMessage"
+}
