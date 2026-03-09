@@ -31,8 +31,8 @@ from magicskills import ALL_SKILLS, Skills
 load_dotenv()
 
 # ── 1. 组装 Skills ─────────────────────────────────────────────
-skill_a = ALL_SKILLS.get_skill("pdf")
-skill_b = ALL_SKILLS.get_skill("c_2_ast")
+skill_a = ALL_SKILLS().get_skill("pdf")
+skill_b = ALL_SKILLS().get_skill("c_2_ast")
 
 my_skills = Skills(
     name="haystack_skills",

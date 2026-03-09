@@ -51,7 +51,7 @@ def createskill(
 
     from ..type.skillsregistry import ALL_SKILLS, REGISTRY
 
-    all_skills = ALL_SKILLS
+    all_skills = ALL_SKILLS()
     created_skill_path = created_skill.path.expanduser().resolve()
     if all_skills is not skills:
         all_skills.skill_list = [

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
+
+import magicskills.command.uploadskill as uploadskill_module
+import magicskills.type.skillsregistry as skillsregistry_module
 
 from magicskills.command.change_tool_description import change_tool_description as command_change_tool_description
 from magicskills.command.createskill import createskill as command_createskill
@@ -84,38 +88,95 @@ def test_readskill_duplicate_name_requires_path(tmp_path: Path) -> None:
         skills.readskill("same")
 
 
-def test_uploadskill_accepts_skill_name(tmp_path: Path, monkeypatch) -> None:
+def test_uploadskill_clones_existing_fork_when_fork_already_exists(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "skills"
     skill_dir = root / "demo"
     skill_dir.mkdir(parents=True, exist_ok=True)
     (skill_dir / "SKILL.md").write_text("---\ndescription: demo\n---\n", encoding="utf-8")
 
-    class _Result:
-        skill_name = "demo"
-        repo = "repo"
-        branch = "main"
-        remote_subpath = "skills/demo"
-        committed = True
-        pushed = True
-        push_remote = "fork"
-        push_branch = "branch"
-        pr_url = "url"
-        pr_created = True
+    session_dir = tmp_path / "session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    workdir = session_dir / "MagicSkills"
+    branch_name = "fix/upload-demo"
+    calls: list[list[str]] = []
 
-    captured: dict[str, object] = {}
+    class _TempDir:
+        def __enter__(self) -> str:
+            return str(session_dir)
 
-    def _fake_upload_skill_from_dir(*_args, **kwargs):  # noqa: ANN002, ANN003
-        captured.update(kwargs)
-        return _Result()
+        def __exit__(self, exc_type, exc, tb) -> bool:  # noqa: ANN001, ANN201
+            return False
 
-    monkeypatch.setattr("magicskills.command.uploadskill.upload_skill_from_dir", _fake_upload_skill_from_dir)
+    def _fake_run(
+        args: list[str],
+        check: bool = False,
+        capture_output: bool = False,
+        text: bool = False,
+        cwd: Path | str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        del capture_output, text, cwd
+        calls.append(list(args))
+        command = list(args)
 
-    skills = Skills(paths=[root])
-    result = skills.uploadskill("demo")
+        if command == ["gh", "api", "user"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                stdout='{"login":"demo-user","html_url":"https://github.com/demo-user"}',
+                stderr="",
+            )
+        if command == ["gh", "repo", "view", "Narwhal-Lab/MagicSkills", "--json", "defaultBranchRef", "-q", ".defaultBranchRef.name"]:
+            return subprocess.CompletedProcess(command, 0, stdout="main\n", stderr="")
+        if command == ["gh", "repo", "fork", "Narwhal-Lab/MagicSkills", "--remote=false"]:
+            return subprocess.CompletedProcess(
+                command,
+                1,
+                stdout="",
+                stderr="GraphQL: name already exists on this account",
+            )
+        if command == ["git", "clone", "https://github.com/demo-user/MagicSkills.git", str(workdir)]:
+            workdir.mkdir(parents=True, exist_ok=True)
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+        if command[:3] == ["git", "-C", str(workdir)] and command[3:] in (
+            ["remote", "add", "upstream", "https://github.com/Narwhal-Lab/MagicSkills.git"],
+            ["fetch", "upstream"],
+            ["checkout", "main"],
+            ["pull", "--rebase", "upstream", "main"],
+            ["checkout", "-b", branch_name],
+            ["status"],
+            ["add", "-A"],
+            ["push", "-u", "origin", branch_name],
+        ):
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+        if command[:3] == ["git", "-C", str(workdir)] and command[3:] == ["status", "--porcelain"]:
+            return subprocess.CompletedProcess(command, 0, stdout="A  skills/demo/SKILL.md\n", stderr="")
+        if command[:3] == ["git", "-C", str(workdir)] and command[3:7] == [
+            "-c",
+            "user.name=demo-user",
+            "-c",
+            "user.url=https://github.com/demo-user",
+        ]:
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+        if command[:3] == ["gh", "pr", "create"]:
+            return subprocess.CompletedProcess(command, 0, stdout="https://example.com/pr/1\n", stderr="")
+        if check:
+            raise subprocess.CalledProcessError(1, command)
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
-    assert getattr(result, "skill_name", None) == "demo"
-    assert captured.get("source_dir") == skill_dir.resolve()
-    assert captured.get("create_pr") is True
+    monkeypatch.setattr(uploadskill_module, "_ensure_gh_auth_status", lambda: None)
+    monkeypatch.setattr(uploadskill_module, "_default_push_branch", lambda _name: branch_name)
+    monkeypatch.setattr(uploadskill_module.tempfile, "TemporaryDirectory", lambda: _TempDir())
+    monkeypatch.setattr(uploadskill_module.subprocess, "run", _fake_run)
+
+    result = uploadskill_module.uploadskill(skill_dir)
+
+    assert result.skill_name == "demo"
+    assert result.repo == "https://github.com/Narwhal-Lab/MagicSkills.git"
+    assert result.push_remote == "origin"
+    assert result.push_branch == branch_name
+    assert result.pr_url == "https://example.com/pr/1"
+    assert ["gh", "repo", "fork", "Narwhal-Lab/MagicSkills", "--remote=false"] in calls
+    assert ["git", "clone", "https://github.com/demo-user/MagicSkills.git", str(workdir)] in calls
 
 
 def test_uploadskill_duplicate_name_requires_path(tmp_path: Path) -> None:
@@ -164,7 +225,7 @@ def test_createskill_persists_registry(tmp_path: Path, monkeypatch) -> None:
     fake_registry = _FakeRegistry()
     skills = Skills(name="Allskills")
     monkeypatch.setattr("magicskills.type.skillsregistry.REGISTRY", fake_registry)
-    monkeypatch.setattr("magicskills.type.skillsregistry.ALL_SKILLS", skills)
+    monkeypatch.setattr("magicskills.type.skillsregistry.ALL_SKILLS", lambda: skills)
 
     created = command_createskill(skills, skill_dir)
 
@@ -172,6 +233,18 @@ def test_createskill_persists_registry(tmp_path: Path, monkeypatch) -> None:
     assert fake_registry.saved == 1
     assert len(skills.skills) == 1
     assert skills.skills[0].name == "demo"
+
+
+def test_all_skills_function_reads_current_registry(monkeypatch, tmp_path: Path) -> None:
+    registry = skillsregistry_module.SkillsRegistry(store_path=tmp_path / "collections.json")
+    monkeypatch.setattr(skillsregistry_module, "REGISTRY", registry)
+
+    before = skillsregistry_module.ALL_SKILLS()
+    registry.loadskills(tmp_path / "missing.json")
+    after = skillsregistry_module.ALL_SKILLS()
+
+    assert before is not after
+    assert after is registry.get_skills("Allskills")
 
 
 def test_change_tool_description_persists_registry(monkeypatch) -> None:

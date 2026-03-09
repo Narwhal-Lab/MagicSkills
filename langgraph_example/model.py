@@ -31,8 +31,8 @@ from magicskills import ALL_SKILLS, Skills
 load_dotenv()
 
 # ── 1. 组装 Skills ─────────────────────────────────────────────
-skill_a = ALL_SKILLS.get_skill("pdf")
-skill_b = ALL_SKILLS.get_skill("c_2_ast")
+skill_a = ALL_SKILLS().get_skill("pdf")
+skill_b = ALL_SKILLS().get_skill("c_2_ast")
 
 my_skills = Skills(
     name="langgraph_skills",
@@ -108,5 +108,4 @@ try:
 finally:
     with open(log_file, "w", encoding="utf-8") as f:
         f.write("\n".join(log_lines))
-
 

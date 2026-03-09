@@ -194,7 +194,11 @@ class SkillsRegistry:
         self.saveskills()
 
 REGISTRY = SkillsRegistry()
-ALL_SKILLS = REGISTRY.get_skills(ALL_SKILLS_NAME)
+
+
+def ALL_SKILLS() -> Skills:
+    """Return the current built-in `Allskills` collection from the active registry."""
+    return REGISTRY.get_skills(ALL_SKILLS_NAME)
 
 
 __all__ = [

@@ -176,7 +176,8 @@ def test_cmd_create_skills_resolves_skill_list(monkeypatch) -> None:
         captured.update(kwargs)
         return _Created()
 
-    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    fake_all_skills = _FakeAllSkills()
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", lambda: fake_all_skills)
     monkeypatch.setattr(cli_module, "command_createskills", _fake_command_createskills)
 
     exit_code = cmd_create_skills(
@@ -281,7 +282,8 @@ def test_cmd_read_accepts_skill_name_from_allskills(
                 raise KeyError(str(target))
             return _SkillRef()
 
-    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    fake_all_skills = _FakeAllSkills()
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", lambda: fake_all_skills)
 
     exit_code = cmd_read(argparse.Namespace(path="demo"))
     assert exit_code == 0
@@ -296,7 +298,8 @@ def test_cmd_read_duplicate_skill_name_requires_path(monkeypatch) -> None:
             _ = target
             raise KeyError("Multiple skills named 'demo' found. Provide path. Candidates: a, b")
 
-    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    fake_all_skills = _FakeAllSkills()
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", lambda: fake_all_skills)
     with pytest.raises(SystemExit, match="please pass file path"):
         cmd_read(argparse.Namespace(path="demo"))
 
@@ -480,7 +483,8 @@ def test_cmd_deleteskill_requires_path_when_name_duplicated(monkeypatch) -> None
             _ = target
             raise KeyError("Multiple skills named 'dup' found. Provide path. Candidates: a, b")
 
-    monkeypatch.setattr(cli_module, "ALL_SKILLS", _FakeAllSkills())
+    fake_all_skills = _FakeAllSkills()
+    monkeypatch.setattr(cli_module, "ALL_SKILLS", lambda: fake_all_skills)
 
     with pytest.raises(SystemExit, match="skill-directory-path"):
         cmd_delete_skill(argparse.Namespace(target="dup"))
@@ -521,7 +525,7 @@ def test_cmd_deleteskill_default_prunes_other_collections(monkeypatch, tmp_path:
 
         def get(self, name: str):
             if name == "Allskills":
-                return cli_module.ALL_SKILLS
+                return cli_module.ALL_SKILLS()
             if name == "team-a":
                 return self.named
             raise KeyError(name)

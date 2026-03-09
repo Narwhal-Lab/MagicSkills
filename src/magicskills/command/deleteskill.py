@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..type.skillsregistry import ALL_SKILLS, ALL_SKILLS_NAME, REGISTRY
+from ..type.skillsregistry import ALL_SKILLS_NAME, REGISTRY
 from ..utils.utils import is_directory_or_symlink_to_directory, skill_paths_from_skills
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 def deleteskill(skills: Skills, target: str) -> str:
     """Delete one skill by target(name or path) from one collection.
 
-    - If `skills` is `ALL_SKILLS`, this also deletes the skill directory from filesystem.
+    - If `skills` is the built-in `Allskills`, this also deletes the skill directory from filesystem.
     - Then all other collections remove the same skill by recursively calling `deleteskill`.
     """
     raw_target = target.strip()
@@ -37,7 +37,6 @@ def deleteskill(skills: Skills, target: str) -> str:
     resolved_path = resolved_skill.path.expanduser().resolve()
 
     is_allskills = skills.name == ALL_SKILLS_NAME
-    is_allskills = is_allskills or (skills is ALL_SKILLS)
 
     # Non-Allskills: only remove from this collection.
     if not is_allskills:
