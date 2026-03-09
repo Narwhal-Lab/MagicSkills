@@ -1,8 +1,14 @@
-
+ MagicSkills  $env:PYTHONPATH = ""; uv run --with semantic-kernel --with python-dotenv python semantic_kernel_example/model.py
+[agent_IoWPcYJGSuvVnuUK]:
 
 <｜DSML｜function_calls>
 <｜DSML｜invoke name="MagicSkillsPlugin-skill_tool">
 <｜DSML｜parameter name="action" string="true">execskill</｜DSML｜parameter>
-<｜DSML｜parameter name="arg" string="true">dir</｜DSML｜parameter>
+<｜DSML｜parameter name="arg" string="true">cd .claude/skills/c_2_ast/scripts/ && python3 save_c.py --input "#include <stdio.h>
+
+int main() {
+    puts(\"Hello from agent\");
+    return 0;
+}" --output . --filename input.c</｜DSML｜parameter>
 </｜DSML｜invoke>
 </｜DSML｜function_calls>
