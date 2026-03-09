@@ -35,6 +35,37 @@ class SkillsRegistry:
         if ALL_SKILLS_NAME not in self._instances:
             self._instances[ALL_SKILLS_NAME] = Skills(name=ALL_SKILLS_NAME)
 
+    def _allskills_instance(self) -> Skills:
+        """Return the built-in `Allskills` collection, creating it when missing."""
+        self._ensure_default_instance()
+        return self._instances[ALL_SKILLS_NAME]
+
+    def _normalize_provided_skills(self, skill_list: Iterable[Skill]) -> list[Skill]:
+        """Ensure provided skills exist in `Allskills` and return canonical instances."""
+        allskills = self._allskills_instance()
+        canonical_by_path = {
+            skill.path.expanduser().resolve(): skill
+            for skill in allskills.skill_list
+        }
+
+        normalized: list[Skill] = []
+        seen_paths: set[Path] = set()
+        for skill in skill_list:
+            resolved_path = skill.path.expanduser().resolve()
+            if resolved_path in seen_paths:
+                continue
+            seen_paths.add(resolved_path)
+
+            canonical = canonical_by_path.get(resolved_path)
+            if canonical is None:
+                allskills.skill_list.append(skill)
+                canonical_by_path[resolved_path] = skill
+                canonical = skill
+            normalized.append(canonical)
+
+        allskills.paths = skill_paths_from_skills(allskills.skill_list)
+        return normalized
+
     def _serialize(self) -> dict[str, object]:
         """Serialize registry state into JSON-friendly payload."""
         collections: dict[str, dict[str, object]] = {}
@@ -155,12 +186,10 @@ class SkillsRegistry:
                 )
         else:
             if isinstance(skill_list, str):
-                allskills = self._instances.get(ALL_SKILLS_NAME)
-                if allskills is None:
-                    raise KeyError(f"Cannot resolve skill target '{skill_list}': Allskills not found")
+                allskills = self._allskills_instance()
                 provided_skills = [allskills.get_skill(skill_list)]
             else:
-                provided_skills = list(skill_list)
+                provided_skills = self._normalize_provided_skills(skill_list)
             instance = Skills(
                 name=name,
                 skill_list=provided_skills,

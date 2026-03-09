@@ -112,6 +112,30 @@ def test_registry_create_without_paths_uses_allskills_skill_directories(tmp_path
     assert [path.resolve() for path in created.paths] == [alpha_dir.resolve(), beta_dir.resolve()]
 
 
+def test_registry_createskills_autoregisters_provided_skills_for_reload(tmp_path: Path) -> None:
+    store_path = tmp_path / "collections.json"
+    skill_dir = tmp_path / "demo"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text("---\ndescription: demo\n---\n", encoding="utf-8")
+
+    provided_skill = Skill(
+        name="demo",
+        description="demo",
+        path=skill_dir,
+        base_dir=skill_dir.parent,
+        source=str(skill_dir.parent),
+    )
+
+    registry = SkillsRegistry(store_path=store_path)
+    created = registry.createskills(name="team-c", skill_list=[provided_skill])
+
+    assert created.skills[0].path.resolve() == skill_dir.resolve()
+    assert registry.get_skills("Allskills").get_skill(str(skill_dir)).path.resolve() == skill_dir.resolve()
+
+    reloaded = SkillsRegistry(store_path=store_path)
+    assert reloaded.get_skills("team-c").skills[0].path.resolve() == skill_dir.resolve()
+
+
 def test_registry_always_contains_allskills(tmp_path: Path) -> None:
     registry = SkillsRegistry(store_path=tmp_path / "collections.json")
     assert "Allskills" in [item.name for item in registry.listskills()]
