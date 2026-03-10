@@ -31,6 +31,15 @@ Turn scattered `SKILL.md` directories into a reusable · composable · syncable 
 <br/>
 
 <sub>Initiated and maintained by Narwhal-Lab, Peking University</sub>
+<p align="center">
+  <a href="https://www.pku.edu.cn">
+    <img src="./image/image4.png" alt="Peking University" height="42" />
+  </a>
+  <a href="https://github.com/Narwhal-Lab">
+    <img src="./image/image5.png" alt="Narwhal-Lab" height="42" />
+  </a>
+</p>
+
 
 <p>
   <a href="https://github.com/Narwhal-Lab/MagicSkills"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10‑3.13"/></a>
@@ -41,14 +50,6 @@ Turn scattered `SKILL.md` directories into a reusable · composable · syncable 
 </p>
 
 
-<p align="center">
-  <a href="https://www.pku.edu.cn">
-    <img src="./image/image4.png" alt="Peking University" height="42" />
-  </a>
-  <a href="https://github.com/Narwhal-Lab">
-    <img src="./image/image5.png" alt="Narwhal-Lab" height="42" />
-  </a>
-</p>
 
 
 <br/>
