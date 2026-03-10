@@ -1,26 +1,63 @@
 <div align="center">
 
-<!-- 有 Logo 之后取消注释下行 -->
-
 <img src="./image/Logo.png" alt="MagicSkills" width="360" />
 
-# 🪄 MagicSkills：**一次构建技能，供每个 Agent 复用**
+<br/>
+<br/>
+
+# 🪄 MagicSkills: **一次构建技能，供每个 Agent 复用**
+
+<br/>
+
+<p align="center">
+  <a href="https://www.pku.edu.cn">
+    <img src="./image/image4.png" alt="Peking University" height="42" />
+  </a>
+  <a href="https://github.com/Narwhal-Lab">
+    <img src="./image/image5.png" alt="Narwhal-Lab" height="42" />
+  </a>
+</p>
+
+为多 Agent 项目打造的**本地优先** Skill 基础设施
+
+将分散的 `SKILL.md` 沉淀为可复用 · 可组合 · 可同步 · 可调用的共享能力库
+
+<br/>
+
+<table>
+<tr>
+<td align="center"><b>🤖 Agent 应用</b></td>
+<td align="center"><b>🧩 Agent 框架</b></td>
+</tr>
+<tr>
+<td align="center">Claude Code · Cursor · Windsurf · Aider · Codex<br/><sub>任何读取 AGENT.md 的 Agent 应用</sub></td>
+<td align="center">AutoGen · CrewAI · LangChain · LangGraph · Haystack<br/>Semantic Kernel · smolagents · LlamaIndex<br/><sub>任何具备 tool / function 适配能力的 Agent 框架</sub></td>
+</tr>
+</table>
+
+<br/>
+
+<p>
+  <a href="https://github.com/Narwhal-Lab/MagicSkills"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10‑3.13"/></a>
+  &nbsp;
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License: MIT"/></a>
+  &nbsp;
+  <a href="https://github.com/Narwhal-Lab/MagicSkills"><img src="https://img.shields.io/github/stars/Narwhal-Lab/MagicSkills?style=for-the-badge&logo=github" alt="GitHub stars"/></a>
+</p>
 
 
-为多 Agent 项目打造的本地优先 Skill 基础设施
-将分散的 `SKILL.md` 目录沉淀为可复用、可组合、可同步、可调用的共享能力库
-适用于Claude Code, Cursor, Windsurf, Aider, Codex等任何读AGENT.md的agent应用以及autogen, crewai, langchain, langgraph, haystack, semantic_kernels, smolagents, llamaindex等任何具备tool function适配的agent框架
-<sub>由北京大学 Narwhal-Lab 发起并维护</sub>
+<br/>
+<br/>
 
-[![Python 3.10‑3.13](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://github.com/Narwhal-Lab/MagicSkills)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![GitHub stars](https://img.shields.io/github/stars/Narwhal-Lab/MagicSkills?style=social)](https://github.com/Narwhal-Lab/MagicSkills)
+[English](./README.en.md)&ensp;|&ensp;简体中文
 
-[English](./README.en.md) | 简体中文
+<br/>
 
-[概览](#overview-cn) · [快速开始](#quick-start-cn) · [工作原理](#how-it-works-cn) · [CLI 命令](#cli-cn) · [Python API](#python-api-cn) · [使用建议](#tips-cn)
+[**概览**](#overview-cn)&ensp;·&ensp;[**快速开始**](#quick-start-cn)&ensp;·&ensp;[**工作原理**](#how-it-works-cn)&ensp;·&ensp;[**CLI 命令**](#cli-cn)&ensp;·&ensp;[**Python API**](#python-api-cn)&ensp;·&ensp;[**使用建议**](#tips-cn)
 
 </div>
+
+<br/>
 
 ---
 
