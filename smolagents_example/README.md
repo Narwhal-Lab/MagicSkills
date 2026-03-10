@@ -1,7 +1,7 @@
-﻿# Transformers smolagents Example
+﻿# Smolagents Example
 
 ## 1. 目标
-本示例演示如何把 MagicSkills 的 skill_tool 接入 Transformers smolagents agent，并生成两份完整日志：
+本示例演示如何把 MagicSkills 的 skill_tool 接入 smolagents agent，并生成两份完整日志：
 
 - log1.json：不停读文档场景（偏知识学习）
 - log2.json：执行场景（把 C 代码转换为 AST）
@@ -31,14 +31,14 @@ cp .env.example .env
 在项目根目录执行：
 
 ```bash
-uv run --with "smolagents[openai]" --with python-dotenv python transformers_smolagents_example/model.py --scenario all
+uv run --with "smolagents[openai]" --with python-dotenv python smolagents_example/model.py --scenario all
 ```
 
 可选：只跑单个场景
 
 ```bash
-uv run --with "smolagents[openai]" --with python-dotenv python transformers_smolagents_example/model.py --scenario read
-uv run --with "smolagents[openai]" --with python-dotenv python transformers_smolagents_example/model.py --scenario exec
+uv run --with "smolagents[openai]" --with python-dotenv python smolagents_example/model.py --scenario read
+uv run --with "smolagents[openai]" --with python-dotenv python smolagents_example/model.py --scenario exec
 ```
 
 ## 4. 产物说明

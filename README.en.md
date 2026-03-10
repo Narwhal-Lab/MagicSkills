@@ -4,30 +4,29 @@
 
  <img src="./image/Logo.png" alt="MagicSkills" width="360" /> 
 
-# MagicSkills
+# 🪄 MagicSkills
 
-**Build skills once. Compose for every agent.**
+**Build skills once, reuse them across every agent.**
 
-Skill infrastructure for multi-agent projects  
-Turn scattered `SKILL.md` directories into an installable, composable, syncable, callable capability system
+Local-first skill infrastructure for multi-agent projects  
+Turn scattered `SKILL.md` directories into a reusable, composable, syncable, callable shared capability library
 
-Bring everything into `Allskills` (via `ALL_SKILLS()`) · assemble `Skills` precisely per agent · sync to `AGENTS.md` or expose directly as a tool
-
-Compatible with `SKILL.md` · one skill library for multiple agents · CLI + Python API · local-first and transparent
+<sub>Initiated and maintained by Narwhal-Lab, Peking University</sub>
 
 [![Python 3.10‑3.13](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://github.com/Narwhal-Lab/MagicSkills)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/Narwhal-Lab/MagicSkills?style=social)](https://github.com/Narwhal-Lab/MagicSkills)
 
-[English](./README.en.md) | [简体中文](./README.zh-CN.md)
+English | [简体中文](./README.md)
 
-[Overview](#overview) · [Quick Start](#quick-start) · [How It Works](#how-it-works) · [CLI](#cli) · [Python API](#python-api) · [Tips](#tips)
+[Overview](#overview-en) · [Quick Start](#quick-start-en) · [How It Works](#how-it-works-en) · [CLI](#cli-en) · [Python API](#python-api-en) · [Tips](#tips-en)
 
 </div>
 
 ---
 
-## Overview
+<a id="overview-en"></a>
+## 🧭 Overview
 
 MagicSkills is a local-first skill infrastructure layer for multi-agent projects.
 
@@ -52,7 +51,7 @@ MagicSkills is most useful when:
 - some agents read `AGENTS.md`, while others need direct tool integration
 - you want skill management to stay transparent and file-based
 
-## Why MagicSkills
+## 🤔 Why MagicSkills
 
 Without a skill layer, multi-agent projects usually drift into one of these states:
 
@@ -68,7 +67,8 @@ MagicSkills solves that by separating:
 - the subset each agent should actually see
 - the persistence layer that stores named collections
 
-## Quick Start
+<a id="quick-start-en"></a>
+## 🚀 Quick Start
 
 The shortest recommended workflow is:
 
@@ -77,7 +77,7 @@ The shortest recommended workflow is:
 3. Create a named `Skills` collection for one agent.
 4. Sync that collection to `AGENTS.md` or expose it as a tool.
 
-### 1. Install The Project
+### 1. 📦 Install The Project
 
 From source:
 
@@ -95,7 +95,7 @@ pip install MagicSkills
 magicskills -h
 ```
 
-### 2. Install Skills
+### 2. ⬇️ Install Skills
 
 ```bash
 magicskills install anthropics/skills
@@ -103,7 +103,7 @@ magicskills install anthropics/skills
 
 By default, installed skills are copied into `./.claude/skills/` and then become discoverable from the built-in `Allskills` view.
 
-### 3. Create One Agent Collection
+### 3. 🧩 Create One Agent Collection
 
 ```bash
 magicskills createskills agent1_skills --skill-list pdf docx --agent-md-path /agent_workdir/AGENTS.md
@@ -115,7 +115,7 @@ This means:
 - create a named collection called `agent1_skills`
 - remember `/agent_workdir/AGENTS.md` as its default sync target
 
-### 4. Sync To `AGENTS.md`
+### 4. 🔄 Sync To `AGENTS.md`
 
 ```bash
 magicskills syncskills agent1_skills
@@ -123,7 +123,7 @@ magicskills syncskills agent1_skills
 
 If the target file already contains a skills section, it is replaced. If not, a new one is appended.
 
-### 5. Or Use The Tool Interface Directly
+### 5. 🛠️ Or Use The Tool Interface Directly
 
 For agents that do not read `AGENTS.md`, use the unified CLI tool entrypoint:
 
@@ -133,7 +133,7 @@ magicskills skill-tool readskill --name agent1_skills --arg pdf
 magicskills skill-tool execskill --name agent1_skills --arg "echo hello"
 ```
 
-## Python Example
+## 🐍 Python Example
 
 If you are integrating MagicSkills into an agent framework, keep the Python side minimal:
 
@@ -159,16 +159,17 @@ def _skill_tool(action: str, arg: str = "") -> str:
 
 Use `syncskills` if your runtime consumes `AGENTS.md`. Use `skill_tool` or the Python API directly if it does not.
 
-## Documentation Map
+## 🗺️ Documentation Map
 
-- [How It Works](#how-it-works): architecture and object model
-- [CLI](#cli): command-by-command reference
-- [Python API](#python-api): object and function reference
-- [Tips](#tips): integration guidance
+- [How It Works](#how-it-works-en): architecture and object model
+- [CLI](#cli-en): command-by-command reference
+- [Python API](#python-api-en): object and function reference
+- [Tips](#tips-en): integration guidance
 
-# How It Works
+<a id="how-it-works-en"></a>
+# ⚙️ How It Works
 
-## Core Idea
+## 🧠 Core Idea
 
 The core of MagicSkills is not "a pile of commands", but a stable three-layer model for skill management:
 
@@ -186,7 +187,7 @@ From the recommended runtime workflow, MagicSkills is closest to the following c
 4. Then you select a subset from that view through `ALL_SKILLS()` or `REGISTRY.get_skills("Allskills")` and compose a specific `Skills` collection for an agent
 5. Finally, that named `Skills` collection is registered into `SkillsRegistry`, optionally persisted, and synced to `AGENTS.md`
 
-## Skill Layer
+## 🧱 Skill Layer
 
 In MagicSkills, the minimum requirement for a valid skill is simple: it must be a directory, and that directory must contain `SKILL.md`.
 
@@ -223,7 +224,7 @@ Common capabilities around a single skill include:
 - `createskill_template`: create a standard skill skeleton
 - `createskill`: register an existing skill directory into a collection
 
-## Skills Collection Layer
+## 🧩 Skills Collection Layer
 
 The `Skills` layer solves the problem of organizing multiple skills into one operable working set.
 
@@ -250,7 +251,7 @@ There are two key design points in this layer:
 
 One important detail: `execskill()` runs commands in the current process working directory, not automatically inside the skill directory. That means MagicSkills unifies the execution entry point, but does not silently change your runtime context.
 
-## Registry Persistence Layer
+## 🗃️ Registry Persistence Layer
 
 The `SkillsRegistry` layer solves the problem of saving and restoring multiple named skills collections.
 
@@ -284,7 +285,8 @@ The typical workflow for this layer is:
 
 So in essence, the Registry layer is the project-level configuration center of MagicSkills. `Skill` defines a single item, `Skills` organizes a working set, and `SkillsRegistry` makes those collections survive across different runtime cycles.
 
-# CLI
+<a id="cli-en"></a>
+# 🛠️ CLI
 
 After installation, the `magicskills` command becomes available:
 
@@ -295,7 +297,7 @@ magicskills <command> -h
 
 The examples below assume `bash/zsh`; if you use PowerShell, adjust quoting and escaping rules accordingly.
 
-## CLI Command Overview
+## 📚 CLI Command Overview
 
 | Command                   | Use case                                               | Main capability                                                 |
 | ------------------------- | ------------------------------------------------------ | --------------------------------------------------------------- |
@@ -314,7 +316,7 @@ The examples below assume `bash/zsh`; if you use PowerShell, adjust quoting and 
 | `changetooldescription`   | Modify the collection's `tool_description` metadata    | Update collection description for later querying and integration |
 | `skill-tool`              | Invoke skill capabilities in a tool-function style     | Use unified JSON output to dispatch list/read/exec              |
 
-## General Conventions
+## 📌 General Conventions
 
 - `Allskills` is the built-in skills collection. `listskill`, `readskill`, `install`, `createskill`, `uploadskill`, `deleteskill`, and `showskill` all operate around it by default.
 - Named skills collections are created through `createskills`, and their metadata is stored in `~/.magicskills/collections.json`.
@@ -327,7 +329,7 @@ The examples below assume `bash/zsh`; if you use PowerShell, adjust quoting and 
 - When `readskill` receives a skill name, it actually reads the `SKILL.md` inside that skill directory.
 - For `execskill`, it is recommended to separate CLI args from the command with `--`.
 
-## `listskill`
+## 📋 `listskill`
 
 **Use case**
 
@@ -355,7 +357,7 @@ The output lists each skill in order with:
 - `description`
 - `path` (pointing to that skill's `SKILL.md`)
 
-## `readskill`
+## 📖 `readskill`
 
 **Use case**
 
@@ -400,7 +402,7 @@ When there is a name collision, use an explicit path:
 magicskills readskill ./vendor-skills/demo/SKILL.md
 ```
 
-## `execskill`
+## ▶️ `execskill`
 
 **Use case**
 
@@ -445,7 +447,7 @@ Run a command in the context of custom skills paths:
 magicskills execskill --paths ./.claude/skills ./vendor-skills -- ls -la
 ```
 
-## `syncskills`
+## 🔄 `syncskills`
 
 **Use case**
 
@@ -488,7 +490,7 @@ Notes:
 - If the target file does not exist, the command creates it first and writes a base `# AGENTS` title.
 - If the file already contains a `<skills_system>` block, the command replaces it; otherwise it appends a new block to the end of the file.
 
-## `install`
+## 📦 `install`
 
 **Use case**
 
@@ -580,7 +582,7 @@ Notes:
 - After installation, the CLI prints the actual directories written to disk.
 - The install flow also registers installed skills into the current process `Allskills` collection.
 
-## `createskill`
+## 🧰 `createskill`
 
 **Use case**
 
@@ -616,7 +618,7 @@ Notes:
 - The behavior of this command is "register an existing skill", not "generate a skill template".
 - `description` is extracted from the `SKILL.md` frontmatter.
 
-## `uploadskill`
+## 📤 `uploadskill`
 
 **Use case**
 
@@ -662,7 +664,7 @@ Notes:
 - If `gh auth login` is inconvenient, the CLI will also ask whether to enter a temporary `GH_TOKEN`.
 - On success, it outputs fields such as `Repo`, `Branch`, `Target`, `Committed`, `Pushed`, and `PR URL`.
 
-## `deleteskill`
+## 🗑️ `deleteskill`
 
 **Use case**
 
@@ -698,7 +700,7 @@ Notes:
 - Deletion removes the actual skill directory immediately and does not ask for confirmation a second time.
 - After a successful deletion, if other named collections also reference the same skill path, the corresponding entries in those collections are also removed.
 
-## `showskill`
+## 🔍 `showskill`
 
 **Use case**
 
@@ -734,7 +736,7 @@ Notes:
 - Then it shows the contents of all files under the skill directory.
 - When binary files are encountered, it prints `[binary file omitted: <size> bytes]` instead of raw unreadable data.
 
-## `createskills`
+## 🧩 `createskills`
 
 **Use case**
 
@@ -811,7 +813,7 @@ Notes:
 - Every path in `--paths` must resolve to existing skills in the current `Allskills`, or to a parent skills root directory that contains them.
 - On success, the command prints the collection name and `Skills count`.
 
-## `listskills`
+## 🗂️ `listskills`
 
 **Use case**
 
@@ -849,7 +851,7 @@ Each collection object in JSON output includes:
 - `tool_description`
 - `agent_md_path`
 
-## `deleteskills`
+## 🧹 `deleteskills`
 
 **Use case**
 
@@ -878,7 +880,7 @@ Notes:
 - `deleteskills` only removes collection registration and does not delete skill directories.
 - The built-in `Allskills` collection cannot be deleted.
 
-## `changetooldescription`
+## ✏️ `changetooldescription`
 
 **Use case**
 
@@ -914,7 +916,7 @@ Notes:
 - This updates collection metadata.
 - It does not change the fixed `AGENTS.md` usage template generated by `syncskills`.
 
-## `skill-tool`
+## 🤖 `skill-tool`
 
 **Use case**
 
@@ -982,7 +984,8 @@ Notes:
 - When `ok` is `true`, the CLI exits with code `0`; otherwise it exits with code `1`.
 - When an unknown action is passed, it returns `{"ok": false, "error": "Unknown action: ..."}`.
 
-# Python API
+<a id="python-api-en"></a>
+# 🐍 Python API
 
 If you want to call MagicSkills directly from scripts, tests, agent runtimes, or higher-level frameworks instead of going through the CLI, use the Python API. The content below follows the current `__all__` in `/root/LLK/MagicSkills/src/magicskills/__init__.py`.
 
@@ -1013,7 +1016,7 @@ from magicskills import (
 - If you want to directly reuse CLI-equivalent capabilities, top-level functions are more direct.
 - `changetooldescription` is a compatibility alias of `change_tool_description`; they are equivalent.
 
-## `Skill`
+## 🧱 `Skill`
 
 **Use case**
 
@@ -1066,7 +1069,7 @@ print(skill.name)
 print(skill.to_dict())
 ```
 
-## `Skills`
+## 🧩 `Skills`
 
 **Use case**
 
@@ -1135,7 +1138,7 @@ print(result.returncode, result.stdout)
 skills.syncskills()
 ```
 
-## `SkillsRegistry`
+## 🗃️ `SkillsRegistry`
 
 **Use case**
 
@@ -1179,7 +1182,7 @@ registry.saveskills()
 registry.loadskills()
 ```
 
-## `REGISTRY`
+## 🏷️ `REGISTRY`
 
 **Use case**
 
@@ -1197,7 +1200,7 @@ from magicskills import REGISTRY
 print([item.name for item in REGISTRY.listskills()])
 ```
 
-## `ALL_SKILLS()`
+## 🌐 `ALL_SKILLS()`
 
 **Use case**
 
@@ -1221,7 +1224,7 @@ print(listskill(ALL_SKILLS()))
 print(readskill(ALL_SKILLS(), "demo"))
 ```
 
-## `DEFAULT_SKILLS_ROOT`
+## 🏠 `DEFAULT_SKILLS_ROOT`
 
 **Use case**
 
@@ -1239,7 +1242,7 @@ from magicskills import DEFAULT_SKILLS_ROOT
 print(DEFAULT_SKILLS_ROOT)
 ```
 
-## `listskill()`
+## 📋 `listskill()`
 
 **Use case**
 
@@ -1267,7 +1270,7 @@ from magicskills import ALL_SKILLS, listskill
 print(listskill(ALL_SKILLS()))
 ```
 
-## `readskill()`
+## 📖 `readskill()`
 
 **Use case**
 
@@ -1309,7 +1312,7 @@ content = readskill(ALL_SKILLS(), Path("./skills/demo/SKILL.md"))
 print(content)
 ```
 
-## `showskill()`
+## 🔍 `showskill()`
 
 **Use case**
 
@@ -1338,7 +1341,7 @@ from magicskills import ALL_SKILLS, showskill
 print(showskill(ALL_SKILLS(), "demo"))
 ```
 
-## `execskill()`
+## ▶️ `execskill()`
 
 **Use case**
 
@@ -1406,7 +1409,7 @@ result = execskill(ALL_SKILLS(), "sleep 1", timeout=2)
 print(result.returncode)
 ```
 
-## `createskill_template()`
+## 🧱 `createskill_template()`
 
 **Use case**
 
@@ -1444,7 +1447,7 @@ This API ensures the following exist:
 - `assets/`
 - a default `SKILL.md`
 
-## `createskill()`
+## 🧰 `createskill()`
 
 **Use case**
 
@@ -1500,7 +1503,7 @@ Notes:
 - If you register a skill into a non-`Allskills` collection, the same skill is also added to the built-in `Allskills` view.
 - If the target collection belongs to the current `REGISTRY`, the registry is saved automatically.
 
-## `install()`
+## 📦 `install()`
 
 **Use case**
 
@@ -1564,7 +1567,7 @@ Notes:
 - The resolution order is the same as the CLI: local path first, then default repository skill name, then Git repository.
 - After installation, skills are registered into the built-in `Allskills` view and persisted into the current `REGISTRY`.
 
-## `uploadskill()`
+## 📤 `uploadskill()`
 
 **Use case**
 
@@ -1615,7 +1618,7 @@ print(result.repo, result.push_branch)
 - Before running, the same prerequisites as the CLI must be satisfied: `gh` must be installed and authenticated locally, and the target skill directory must contain `SKILL.md`.
 - If you pass a `Skills` object and multiple skills have the same name, pass an explicit directory path instead.
 
-## `deleteskill()`
+## 🗑️ `deleteskill()`
 
 **Use case**
 
@@ -1662,7 +1665,7 @@ Notes:
 - When you pass a non-`Allskills` collection, the skill is only removed from that collection and not deleted from disk.
 - When you pass the built-in `Allskills` view, the actual skill directory is deleted, and matching path references are removed from other named collections as well.
 
-## `createskills()`
+## 🧩 `createskills()`
 
 **Use case**
 
@@ -1708,7 +1711,7 @@ Create by paths:
 ```python
 from magicskills import createskills
 
-# 前提：这些 skills 已经通过 install/createskill 进入内置 Allskills 视图
+# Prerequisite: these skills have already entered the built-in Allskills view via install/createskill
 skills = createskills(
     "coder",
     paths=["./.claude/skills"],
@@ -1723,7 +1726,7 @@ Create from a single skill name:
 ```python
 from magicskills import createskills
 
-# 前提：内置 Allskills 视图中已经能解析到名为 demo 的 skill
+# Prerequisite: the built-in Allskills view can already resolve a skill named demo
 skills = createskills("reviewer", skill_list="demo")
 print([item.name for item in skills.skills])
 ```
@@ -1733,7 +1736,7 @@ print([item.name for item in skills.skills])
 - If both `paths` and `skill_list` are omitted, an empty collection is created.
 - `paths` and string-form `skill_list` both depend on the current built-in `Allskills` view being able to resolve the target skill or its parent skills root.
 
-## `listskills()`
+## 🗂️ `listskills()`
 
 **Use case**
 
@@ -1762,7 +1765,7 @@ for item in listskills():
     print(item.name, len(item.skills))
 ```
 
-## `deleteskills()`
+## 🧹 `deleteskills()`
 
 **Use case**
 
@@ -1791,7 +1794,7 @@ deleteskills("coder")
 - Only the collection registration is deleted; skill files remain intact.
 - `Allskills` cannot be deleted.
 
-## `syncskills()`
+## 🔄 `syncskills()`
 
 **Use case**
 
@@ -1834,7 +1837,7 @@ path = syncskills(coder, "./AGENTS.md")
 print(path)
 ```
 
-## `loadskills()`
+## 📥 `loadskills()`
 
 **Use case**
 
@@ -1863,7 +1866,7 @@ collections = loadskills("./collections.json")
 print([item.name for item in collections])
 ```
 
-## `saveskills()`
+## 💾 `saveskills()`
 
 **Use case**
 
@@ -1892,7 +1895,7 @@ saved_path = saveskills("./collections.json")
 print(saved_path)
 ```
 
-## `change_tool_description()` / `changetooldescription()`
+## ✏️ `change_tool_description()` / `changetooldescription()`
 
 **Use case**
 
@@ -1934,7 +1937,7 @@ changetooldescription(coder, "Unified skill tool")
 - This metadata is suitable for external frameworks or your own wrapper layer to read.
 - It does not change the fixed `AGENTS.md` usage template produced by `syncskills()`.
 
-## `skill_tool()`
+## 🤖 `skill_tool()`
 
 **Use case**
 
@@ -2005,9 +2008,10 @@ from magicskills import ALL_SKILLS, skill_tool
 print(skill_tool(ALL_SKILLS(), "execskill", "demo::echo hello"))
 ```
 
-# Tips
+<a id="tips-en"></a>
+# 💡 Tips
 
-## Integration via `AGENTS.md`
+## 🧾 Integration via `AGENTS.md`
 
 It is recommended to first install or maintain all skills under one shared skills root, then select the subset actually needed by a given agent, build a named skills collection from it, and finally sync that collection into the target `AGENTS.md`.
 
@@ -2034,7 +2038,7 @@ magicskills syncskills coder --output ./agents/coder/AGENTS.md -y
 
 If you want finer-grained exposure control, install all skills into one shared directory first, then generate different `AGENTS.md` files for different agents through multiple named collections.
 
-## Integration without `AGENTS.md`
+## 🔌 Integration without `AGENTS.md`
 
 Some agents or frameworks do not read `AGENTS.md` proactively. In that case, you can expose MagicSkills' unified dispatch interface directly to them instead of relying on document syncing.
 
@@ -2064,7 +2068,7 @@ For example:
 from magicskills import ALL_SKILLS, Skills
 
 skill_a = ALL_SKILLS().get_skill("demo")
-skill_b = ALL_SKILLS().get_skill("code-review")  # 改成你自己的第二个 skill 名称或路径
+skill_b = ALL_SKILLS().get_skill("code-review")  # Replace with your own second skill name or path
 
 skills = Skills(
     skill_list=[skill_a, skill_b],
@@ -2086,7 +2090,72 @@ The simplified rule of thumb is:
 - for agents that read `AGENTS.md`, prefer `createskills + syncskills`
 - for agents that do not read `AGENTS.md`, prefer `skill-tool` or `skills.skill_tool()`
 
-# FAQ
+# ❓ FAQ
+
+### What is the minimum structure of a skill?
+
+At minimum, a skill must satisfy two conditions:
+
+- it is a directory
+- the directory contains `SKILL.md`
+
+Folders such as `references/`, `scripts/`, and `assets/` are common conventions, but they are optional.
+
+### Should I use `syncskills` or `skill-tool`?
+
+Choose based on how your agent integrates:
+
+- if your agent reads `AGENTS.md`, prefer `createskills + syncskills`
+- if your agent does not read `AGENTS.md` and instead integrates through tool-call / function-call, prefer `skill-tool` or `skills.skill_tool()`
+
+The former is better for document-driven integration; the latter is better for direct programmatic integration.
+
+### Where does `install` put skills by default?
+
+By default, skills are installed into `./.claude/skills/` under the current project.
+
+If you use:
+
+- `--global`, the default becomes `~/.claude/skills`
+- `--universal`, the default becomes `./.agent/skills` in the current project
+- `--global --universal`, the default becomes `~/.agent/skills`
+- `--target`, the explicitly specified directory is used instead
+
+### What should I do when skill names conflict?
+
+Many commands accept either a skill name or a skill path.  
+If multiple skills share the same name, stop passing the name and use an explicit path instead, for example:
+
+```bash
+magicskills readskill ./skills/demo/SKILL.md
+magicskills deleteskill ./skills/demo
+```
+
+In short: names are for convenience, paths are for disambiguation.
+
+### Does `execskill` automatically run inside the skill directory?
+
+No. `execskill()` runs in the current process working directory. It does not automatically switch into a skill directory.
+
+This means:
+
+- MagicSkills gives you a unified execution entrypoint
+- but it does not silently change your runtime context
+
+If your command depends on a specific directory, `cd` into it yourself in the command, or invoke MagicSkills from the correct working directory.
+
+### How can I share a local skill with others?
+
+If you want to contribute a local skill into the open-source ecosystem, use `uploadskill` to submit it into this project's `skills/` directory. Other users can then download and reuse it with `install`.
+
+A typical flow looks like this:
+
+```bash
+magicskills uploadskill ./skills/my-skill
+magicskills install my-skill
+```
+
+The first command shares the skill; the second reuses it.
 
 # 📋 Requirements
 
@@ -2103,6 +2172,6 @@ The simplified rule of thumb is:
 
 <div align="center">
 
-**Built with ❤️ by [Narwhal-Lab](https://github.com/Narwhal-Lab)**
+**Open-sourced and maintained by [Narwhal-Lab, Peking University](https://github.com/Narwhal-Lab)**
 
 </div>

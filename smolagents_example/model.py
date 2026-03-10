@@ -2,7 +2,7 @@
 
 Usage:
     uv run --with "smolagents[openai]" --with python-dotenv \
-        python transformers_smolagents_example/model.py --scenario all
+        python smolagents_example/model.py --scenario all
 
 Env vars (put in .env):
     OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL

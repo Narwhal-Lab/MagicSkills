@@ -162,7 +162,7 @@ Contents of current directory:
 ['.env.example', '.git', '.gitignore', '.uv-cache', '.venv', 'autogen_example', 'ClaudeCode_example', 'crewai_example', 
 'Cursor_example', 'haystack_example', 'image', 'langchain_example', 'langgraph_example', 'LICENSE', 
 'llamaindex_example', 'magicskills', 'output.c', 'pyproject.toml', 'README.md', 'README_before.md', 
-'semantic_kernel_example', 'skills', 'src', 'tests', 'tox.ini', 'transformers_smolagents_example', 'uv.lock', 
+'semantic_kernel_example', 'skills', 'src', 'tests', 'tox.ini', 'smolagents_example', 'uv.lock', 
 'Windsurf_example']
 
 [1;31mCode execution failed at line 'skills_path = os.path.join(current_dir, "skills")' due to: InterpreterError: Forbidden [0m
