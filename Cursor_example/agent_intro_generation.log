@@ -1,8 +1,0 @@
-步骤 1：读取 `AGENTS.md`，确认可用的 DOCX 技能以及其路径。
-步骤 2：读取 DOCX 技能说明文件 `SKILL.md`，了解 .docx 文档的推荐工作流。
-步骤 3：完整阅读 `docx-js.md`，学习如何使用 JavaScript 中的 `docx` 库安全地生成 Word 文档。
-步骤 4：在项目根目录创建脚本文件 `create_agent_intro_doc.js`，使用 `Document`、`Paragraph`、`TextRun` 等组件构建“AI 助手自我介绍”文档结构与内容。
-步骤 5：在当前项目目录中执行 `npm install docx`，安装生成 .docx 文档所需的 Node.js 依赖。
-步骤 6：在当前项目目录中运行 `node create_agent_intro_doc.js`，生成 `agent_self_intro.docx` 自我介绍文档。
-步骤 7：将本次从读取配置、学习技能到生成文档的完整流程记录到当前文件 `agent_intro_generation.log` 中，便于后续审计与复现。
-
