@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./image/Logo.png" alt="MagicSkills" width="250" />
+<img src="./image/Logo.png" alt="MagicSkills" width="300" />
 
 <br/>
 <br/>
