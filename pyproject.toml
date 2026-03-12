@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "MagicSkills"
-version = "0.1.0"
+version = "1.0.0"
 description = "Cross-platform skills manager and agent tool for SKILL.md-based skills."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
