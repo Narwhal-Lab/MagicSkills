@@ -48,7 +48,7 @@ magicskills install anthropics/skills -t ~/allskills
 ```bash
 magicskills addskills langchain_agent1_skills --skill-list c_2_ast pdf --agent-md-path ./AGENTS.md
 magicskills addskills langchain_agent2_skills --skill-list c_2_ast docx --agent-md-path ./AGENTS.md
-```
+```我先把当前 pr.md 读一遍，然后把它改成英文版，同时新增一份中文保留稿 pr.zh-CN.md。
 
 - **langchain_agent1_skills**：`c_2_ast` + `pdf`，用于 log1 场景（知识阅读 agent）
 - **langchain_agent2_skills**：`c_2_ast` + `docx`，用于 log2 场景（代码执行 agent）

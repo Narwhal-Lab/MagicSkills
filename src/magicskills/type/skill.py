@@ -33,3 +33,34 @@ class Skill:
             "baseDir": str(self.base_dir),
             "source": self.source,
         }
+
+    def scanskill(
+        self,
+        *,
+        base_url: str | None = None,
+        model: str | None = None,
+        token: str | None = None,
+        model_base_url: str | None = None,
+        prompt: str | None = None,
+        language: str | None = None,
+        thread: int | None = None,
+        poll_interval: float | None = None,
+        timeout: float | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, object]:
+        """Scan this skill directory with AI-Infra-Guard."""
+        from ..command.scanskill import scanskill as command_scanskill
+
+        return command_scanskill(
+            self,
+            base_url=base_url,
+            model=model,
+            token=token,
+            model_base_url=model_base_url,
+            prompt=prompt,
+            language=language,
+            thread=thread,
+            poll_interval=poll_interval,
+            timeout=timeout,
+            headers=headers,
+        )

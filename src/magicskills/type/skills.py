@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, Mapping
 
 from .result import ExecResult
 from .skill import Skill
@@ -205,6 +205,71 @@ class Skills:
         from ..command.syncskills import syncskills as command_syncskills
 
         return command_syncskills(self, output_path, mode=mode)
+
+    def scanskill(
+        self,
+        target: str | Path,
+        *,
+        base_url: str | None = None,
+        model: str | None = None,
+        token: str | None = None,
+        model_base_url: str | None = None,
+        prompt: str | None = None,
+        language: str | None = None,
+        thread: int | None = None,
+        poll_interval: float | None = None,
+        timeout: float | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, object]:
+        """Scan one named or path-resolved skill from this collection."""
+        from ..command.scanskill import scanskill as command_scanskill
+
+        return command_scanskill(
+            self.get_skill(target),
+            base_url=base_url,
+            model=model,
+            token=token,
+            model_base_url=model_base_url,
+            prompt=prompt,
+            language=language,
+            thread=thread,
+            poll_interval=poll_interval,
+            timeout=timeout,
+            headers=headers,
+        )
+
+    def scanskills(
+        self,
+        *,
+        fail_fast: bool = False,
+        base_url: str | None = None,
+        model: str | None = None,
+        token: str | None = None,
+        model_base_url: str | None = None,
+        prompt: str | None = None,
+        language: str | None = None,
+        thread: int | None = None,
+        poll_interval: float | None = None,
+        timeout: float | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, object]:
+        """Scan all skills in this collection with AI-Infra-Guard."""
+        from ..command.scanskills import scanskills as command_scanskills
+
+        return command_scanskills(
+            self,
+            fail_fast=fail_fast,
+            base_url=base_url,
+            model=model,
+            token=token,
+            model_base_url=model_base_url,
+            prompt=prompt,
+            language=language,
+            thread=thread,
+            poll_interval=poll_interval,
+            timeout=timeout,
+            headers=headers,
+        )
 
     def skill_tool(self, action: str, arg: str = "") -> dict[str, object]:
         """Dispatch action/arg payload for agent tool compatibility."""

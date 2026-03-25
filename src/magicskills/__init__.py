@@ -19,6 +19,8 @@ from .command.listskill import listskill
 from .command.listskills import listskills
 from .command.loadskills import loadskills
 from .command.readskill import readskill
+from .command.scanskill import scanskill
+from .command.scanskills import scanskills
 from .command.saveskills import saveskills
 from .command.showskill import showskill
 from .command.skill_tool import skill_tool
@@ -53,6 +55,8 @@ __all__ = [
     "listskill",
     "listskills",
     "readskill",
+    "scanskill",
+    "scanskills",
     "showskill",
     "skill_tool",
     "syncskills",

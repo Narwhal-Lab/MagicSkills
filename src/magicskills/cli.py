@@ -26,6 +26,8 @@ from .command.change_tool_description import change_tool_description as command_
 from .command.execskill import execskill as command_execskill
 from .command.listskill import listskill as command_listskill
 from .command.readskill import readskill as command_readskill
+from .command.scanskill import scanskill as command_scanskill
+from .command.scanskills import scanskills as command_scanskills
 from .command.skill_tool import skill_tool as command_skill_tool
 from .command.syncskills import syncskills as command_syncskills
 from .command.uploadskill import uploadskill as command_uploadskill
@@ -162,6 +164,52 @@ def _paths_from_args(values: Iterable[str] | None) -> list[Path] | None:
     if not values:
         return None
     return normalize_paths(values)
+
+
+def _headers_from_args(values: Iterable[str] | None) -> dict[str, str] | None:
+    """Parse repeated KEY:VALUE or KEY=VALUE header args into a mapping."""
+    if not values:
+        return None
+    headers: dict[str, str] = {}
+    for raw in values:
+        value = str(raw).strip()
+        if ":" in value:
+            key, _, remainder = value.partition(":")
+        elif "=" in value:
+            key, _, remainder = value.partition("=")
+        else:
+            raise SystemExit(f"Invalid --header value: {value}. Use KEY:VALUE or KEY=VALUE.")
+        key = key.strip()
+        remainder = remainder.strip()
+        if not key:
+            raise SystemExit(f"Invalid --header value: {value}. Header key cannot be empty.")
+        headers[key] = remainder
+    return headers
+
+
+def _looks_like_path_input(value: str) -> bool:
+    raw = value.strip()
+    if not raw:
+        return False
+    if "/" in raw or "\\" in raw or raw.startswith(".") or raw.startswith("~"):
+        return True
+    return Path(raw).expanduser().exists()
+
+
+def _scan_kwargs_from_args(args: argparse.Namespace) -> dict[str, object]:
+    """Build shared AI-Infra-Guard config kwargs from CLI args."""
+    return {
+        "base_url": args.base_url,
+        "model": args.model,
+        "token": args.token,
+        "model_base_url": args.model_base_url,
+        "prompt": args.prompt,
+        "language": args.language,
+        "thread": args.thread,
+        "poll_interval": args.poll_interval,
+        "timeout": args.timeout,
+        "headers": _headers_from_args(args.header),
+    }
 
 
 def _supports_color_output() -> bool:
@@ -565,6 +613,104 @@ def cmd_skill_tool(args: argparse.Namespace) -> int:
     return 0 if result.get("ok") else 1
 
 
+def _format_scan_result(result: dict[str, object]) -> str:
+    summary = result.get("summary")
+    risk_level = None
+    findings_count = None
+    if isinstance(summary, dict):
+        risk_level = summary.get("risk_level")
+        findings_count = summary.get("findings_count")
+
+    rows = [
+        f"Skill: {result.get('skill_name', '(unknown)')}",
+        f"Path: {result.get('skill_path', '(unknown)')}",
+        f"Session ID: {result.get('session_id', '(unknown)')}",
+        f"Status: {result.get('status', '(unknown)')}",
+    ]
+    if risk_level not in {None, ""}:
+        rows.append(f"Risk level: {risk_level}")
+    if findings_count is not None:
+        rows.append(f"Findings: {findings_count}")
+    task_log = str(result.get("task_log", "")).strip()
+    if task_log:
+        rows.append(f"Task log: {task_log}")
+    return "\n".join(rows)
+
+
+def _format_scanskills_result(result: dict[str, object]) -> str:
+    lines = [
+        f"Collection: {result.get('collection_name', '(unknown)')}",
+        f"Total skills: {result.get('total_skills', 0)}",
+        f"Succeeded: {result.get('succeeded', 0)}",
+        f"Failed: {result.get('failed', 0)}",
+        "",
+    ]
+    for item in result.get("results", []):
+        if not isinstance(item, dict):
+            continue
+        skill_name = item.get("skill_name", "(unknown)")
+        if item.get("ok"):
+            summary = item.get("summary")
+            risk_level = None
+            findings_count = None
+            if isinstance(summary, dict):
+                risk_level = summary.get("risk_level")
+                findings_count = summary.get("findings_count")
+            detail_parts = [str(item.get("status", "completed"))]
+            if risk_level not in {None, ""}:
+                detail_parts.append(f"risk={risk_level}")
+            if findings_count is not None:
+                detail_parts.append(f"findings={findings_count}")
+            lines.append(f"- {skill_name}: {', '.join(detail_parts)}")
+        else:
+            lines.append(f"- {skill_name}: failed ({item.get('error', 'unknown error')})")
+    return "\n".join(lines)
+
+
+def cmd_scan_skill(args: argparse.Namespace) -> int:
+    """Scan one skill by skill name or skill directory path."""
+    scan_kwargs = _scan_kwargs_from_args(args)
+    target: object
+    if _looks_like_path_input(args.target):
+        target = args.target
+    else:
+        skills = _registered_skills_or_exit(args.name) if args.name else ALL_SKILLS()
+        try:
+            target = skills.get_skill(args.target)
+        except KeyError as exc:
+            raise SystemExit(str(exc)) from exc
+
+    try:
+        result = command_scanskill(target, **scan_kwargs)
+    except (ValueError, FileNotFoundError, RuntimeError, TimeoutError) as exc:
+        raise SystemExit(str(exc)) from exc
+
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(_format_scan_result(result))
+    return 0
+
+
+def cmd_scan_skills(args: argparse.Namespace) -> int:
+    """Scan every skill in one named skills collection."""
+    skills = _registered_skills_or_exit(args.name)
+    try:
+        result = command_scanskills(
+            skills,
+            fail_fast=args.fail_fast,
+            **_scan_kwargs_from_args(args),
+        )
+    except (ValueError, FileNotFoundError, RuntimeError, TimeoutError) as exc:
+        raise SystemExit(str(exc)) from exc
+
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(_format_scanskills_result(result))
+    return 0 if result.get("ok") else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build argument parser with all supported commands."""
     parser = argparse.ArgumentParser(prog="magicskills")
@@ -676,6 +822,46 @@ def build_parser() -> argparse.ArgumentParser:
     p_tool.add_argument("--arg", default="", help="Action argument")
     p_tool.add_argument("--name", help="Use a named skills instance")
     p_tool.set_defaults(func=cmd_skill_tool)
+
+    p_scan = sub.add_parser("scanskill", help="Scan one skill with AI-Infra-Guard")
+    p_scan.add_argument("target", help="Skill name or skill directory path")
+    p_scan.add_argument("--name", help="Resolve skill name from a named skills collection (default: Allskills)")
+    p_scan.add_argument("--base-url", help="AI-Infra-Guard base URL")
+    p_scan.add_argument("--model", help="Model name used by AI-Infra-Guard scan")
+    p_scan.add_argument("--token", help="Model token used by AI-Infra-Guard scan")
+    p_scan.add_argument("--model-base-url", help="Model base URL used by AI-Infra-Guard scan")
+    p_scan.add_argument("--prompt", help="Custom scan prompt")
+    p_scan.add_argument("--language", help="Scan language (default: env or en)")
+    p_scan.add_argument("--thread", type=int, help="Concurrent thread count")
+    p_scan.add_argument("--poll-interval", type=float, help="Polling interval in seconds")
+    p_scan.add_argument("--timeout", type=float, help="Overall scan timeout in seconds")
+    p_scan.add_argument(
+        "--header",
+        action="append",
+        help="Optional request header for AI-Infra-Guard API, format KEY:VALUE",
+    )
+    p_scan.add_argument("--json", action="store_true", help="JSON output")
+    p_scan.set_defaults(func=cmd_scan_skill)
+
+    p_scan_all = sub.add_parser("scanskills", help="Scan all skills in a named collection with AI-Infra-Guard")
+    p_scan_all.add_argument("name", help="Skills instance name")
+    p_scan_all.add_argument("--base-url", help="AI-Infra-Guard base URL")
+    p_scan_all.add_argument("--model", help="Model name used by AI-Infra-Guard scan")
+    p_scan_all.add_argument("--token", help="Model token used by AI-Infra-Guard scan")
+    p_scan_all.add_argument("--model-base-url", help="Model base URL used by AI-Infra-Guard scan")
+    p_scan_all.add_argument("--prompt", help="Custom scan prompt")
+    p_scan_all.add_argument("--language", help="Scan language (default: env or en)")
+    p_scan_all.add_argument("--thread", type=int, help="Concurrent thread count")
+    p_scan_all.add_argument("--poll-interval", type=float, help="Polling interval in seconds")
+    p_scan_all.add_argument("--timeout", type=float, help="Overall scan timeout in seconds")
+    p_scan_all.add_argument(
+        "--header",
+        action="append",
+        help="Optional request header for AI-Infra-Guard API, format KEY:VALUE",
+    )
+    p_scan_all.add_argument("--fail-fast", action="store_true", help="Stop at the first failed skill scan")
+    p_scan_all.add_argument("--json", action="store_true", help="JSON output")
+    p_scan_all.set_defaults(func=cmd_scan_skills)
 
     return parser
 
