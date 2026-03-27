@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 def scanskills(
     skills: Skills,
     *,
-    fail_fast: bool = False,
     config: AIInfraGuardConfig | None = None,
     base_url: str | None = None,
     model: str | None = None,
+    api_key: str | None = None,
     token: str | None = None,
     model_base_url: str | None = None,
     prompt: str | None = None,
@@ -31,6 +31,7 @@ def scanskills(
     resolved_config = config or resolve_ai_infra_guard_config(
         base_url=base_url,
         model=model,
+        api_key=api_key,
         token=token,
         model_base_url=model_base_url,
         prompt=prompt,
@@ -46,8 +47,6 @@ def scanskills(
         try:
             results.append(command_scanskill(skill, config=resolved_config))
         except Exception as exc:  # noqa: BLE001
-            if fail_fast:
-                raise
             results.append(
                 {
                     "ok": False,

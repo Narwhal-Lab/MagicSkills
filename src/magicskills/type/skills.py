@@ -212,6 +212,7 @@ class Skills:
         *,
         base_url: str | None = None,
         model: str | None = None,
+        api_key: str | None = None,
         token: str | None = None,
         model_base_url: str | None = None,
         prompt: str | None = None,
@@ -228,6 +229,7 @@ class Skills:
             self.get_skill(target),
             base_url=base_url,
             model=model,
+            api_key=api_key,
             token=token,
             model_base_url=model_base_url,
             prompt=prompt,
@@ -241,9 +243,9 @@ class Skills:
     def scanskills(
         self,
         *,
-        fail_fast: bool = False,
         base_url: str | None = None,
         model: str | None = None,
+        api_key: str | None = None,
         token: str | None = None,
         model_base_url: str | None = None,
         prompt: str | None = None,
@@ -258,9 +260,9 @@ class Skills:
 
         return command_scanskills(
             self,
-            fail_fast=fail_fast,
             base_url=base_url,
             model=model,
+            api_key=api_key,
             token=token,
             model_base_url=model_base_url,
             prompt=prompt,

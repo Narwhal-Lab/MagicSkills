@@ -31,6 +31,8 @@ magicskills <command> -h
 | `deleteskills`          | 删除一个命名 skills 集合                     | 只删除集合注册，不删除 skill 文件                          |
 | `changetooldescription` | 修改集合的 `tool_description` 元数据       | 更新面向 tool 的描述，便于后续查询与外部集成               |
 | `changeclidescription` | 修改集合的 `cli_description` 元数据        | 更新面向 CLI 的描述，便于后续查询与外部集成                |
+| `scanskill`            | 用 AI-Infra-Guard 扫描单个 skill            | 扫描一个 skill 并输出格式化结果                            |
+| `scanskills`           | 用 AI-Infra-Guard 扫描一个命名集合中的全部 skill | 输出集合级汇总和逐 skill 摘要                         |
 | `skill-tool`            | 以 tool function 风格调用 skill 能力         | 用统一 JSON 输出做 list/read/exec 分发                     |
 
 ## 📌 通用约定
@@ -709,6 +711,142 @@ magicskills listskills --json
 
 - 这会更新集合元数据。
 - 只有在使用 `--mode cli_description` 时，它才会影响 `syncskills` 的输出。
+
+## 🛡️ `scanskill`
+
+**使用场景**
+
+你想通过 AI-Infra-Guard 扫描一个本地 skill 目录，或者一个已经注册过的 skill 名称，并直接获得格式化后的终端结果。
+
+**命令格式**
+
+```bash
+magicskills scanskill <target> [--name <collection-name>] [--base-url URL] [--model MODEL] [--api-key KEY] [--model-base-url URL] [--details] [--save-raw [PATH]]
+```
+
+**参数说明**
+
+- `<target>`：skill 目录路径，或者一个已经注册的 skill 名称。
+- `--name <collection-name>`：当 `<target>` 传的是 skill 名称而不是路径时，从指定命名集合中解析；不传时默认从 `Allskills` 查找。
+- `--base-url URL`：AI-Infra-Guard 服务地址。
+- `--model MODEL`：AI-Infra-Guard 使用的模型名称。
+- `--api-key KEY`：模型服务的 API key。
+- `--model-base-url URL`：可选的模型服务 base URL。
+- `--details`：在默认摘要后，继续打印同一次扫描的格式化详细结果。
+- `--save-raw [PATH]`：把同样的格式化详细结果保存到文本文件中；如果不传路径，默认保存到当前工作目录。
+
+**环境变量**
+
+如果不想每次都重复输入连接参数，可以预先设置：
+
+- `MAGICSKILLS_AIG_BASE_URL`
+- `MAGICSKILLS_AIG_MODEL`
+- `MAGICSKILLS_AIG_API_KEY`
+- `MAGICSKILLS_AIG_MODEL_BASE_URL`
+
+**功能示例**
+
+扫描一个本地 skill 目录：
+
+```bash
+magicskills scanskill /root/test-skill \
+  --base-url http://localhost:8088 \
+  --model qwen3-max \
+  --api-key "$OPENAI_API_KEY" \
+  --model-base-url "$OPENAI_BASE_URL"
+```
+
+从命名集合里按 skill 名称扫描：
+
+```bash
+magicskills scanskill xlsx --name haystack_agent2_skills
+```
+
+在终端里显示格式化详细结果：
+
+```bash
+magicskills scanskill xlsx --details
+```
+
+把格式化详细结果保存到当前目录：
+
+```bash
+magicskills scanskill xlsx --save-raw
+```
+
+把格式化详细结果保存到指定文件：
+
+```bash
+magicskills scanskill xlsx --save-raw ./reports/xlsx-scan.txt
+```
+
+**输出行为**
+
+- 默认只输出两个盒状区块：`Skill Summary` 和 `Skill Results`。
+- `--details` 会继续追加格式化的详细区块，例如 `Skill Report <name>` 和 `Skill Finding Details <name>`。
+- `--save-raw` 会把与 `--details` 一致的格式化详细视图保存为纯文本文件，不依赖 `--details` 是否传入。
+- `--save-raw` 这个参数名为了兼容性保留了下来，但现在保存的是格式化文本报告，不再是 JSON。
+- 扫描命令不再提供 `--json`。
+
+## 🛡️ `scanskills`
+
+**使用场景**
+
+你想扫描某个命名 skills 集合里的全部 skill，先看集合级风险汇总，再按需展开或保存详细结果。
+
+**命令格式**
+
+```bash
+magicskills scanskills <name> [--base-url URL] [--model MODEL] [--api-key KEY] [--model-base-url URL] [--details] [--save-raw [PATH]]
+```
+
+**参数说明**
+
+- `<name>`：要扫描的命名 skills 集合名称。
+- `--base-url URL`：AI-Infra-Guard 服务地址。
+- `--model MODEL`：AI-Infra-Guard 使用的模型名称。
+- `--api-key KEY`：模型服务的 API key。
+- `--model-base-url URL`：可选的模型服务 base URL。
+- `--details`：在集合级摘要后，为每个成功扫描的 skill 追加格式化的详细结果。
+- `--save-raw [PATH]`：把同样的格式化详细结果保存到文本文件中；如果不传路径，默认保存到当前工作目录。
+
+**功能示例**
+
+扫描一个命名 skills 集合：
+
+```bash
+magicskills scanskills haystack_agent2_skills \
+  --base-url http://localhost:8088 \
+  --model qwen3-max \
+  --api-key "$OPENAI_API_KEY" \
+  --model-base-url "$OPENAI_BASE_URL"
+```
+
+在终端里显示每个 skill 的格式化详细结果：
+
+```bash
+magicskills scanskills haystack_agent2_skills --details
+```
+
+把格式化详细结果保存到当前目录：
+
+```bash
+magicskills scanskills haystack_agent2_skills --save-raw
+```
+
+把格式化详细结果保存到指定文件：
+
+```bash
+magicskills scanskills haystack_agent2_skills --save-raw ./reports/haystack-agent2-skills.txt
+```
+
+**输出行为**
+
+- 默认只输出两个盒状区块：`Skills Summary` 和 `Skills Results`。
+- `Skills Results` 故意保持简洁，每个 skill 只占一行摘要。
+- `--details` 会继续追加每个成功扫描 skill 的格式化详细区块，风格与 `scanskill --details` 一致。
+- `--save-raw` 会把与 `--details` 一致的格式化详细视图保存为纯文本文件，不依赖 `--details` 是否传入。
+- `--save-raw` 这个参数名为了兼容性保留了下来，但现在保存的是格式化文本报告，不再是 JSON。
 
 ## 🤖 `skill-tool`
 

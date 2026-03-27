@@ -90,6 +90,7 @@ def resolve_ai_infra_guard_config(
     *,
     base_url: str | None = None,
     model: str | None = None,
+    api_key: str | None = None,
     token: str | None = None,
     model_base_url: str | None = None,
     prompt: str | None = None,
@@ -110,9 +111,14 @@ def resolve_ai_infra_guard_config(
     if not resolved_model:
         raise ValueError("A.I.G model is required. Pass --model or set MAGICSKILLS_AIG_MODEL.")
 
-    resolved_token = token or os.environ.get("MAGICSKILLS_AIG_TOKEN")
+    resolved_token = (
+        api_key
+        or token
+        or os.environ.get("MAGICSKILLS_AIG_API_KEY")
+        or os.environ.get("MAGICSKILLS_AIG_TOKEN")
+    )
     if not resolved_token:
-        raise ValueError("A.I.G model token is required. Pass --token or set MAGICSKILLS_AIG_TOKEN.")
+        raise ValueError("A.I.G model API key is required. Pass --api-key or set MAGICSKILLS_AIG_API_KEY.")
 
     resolved_model_base_url = model_base_url or os.environ.get("MAGICSKILLS_AIG_MODEL_BASE_URL") or None
     resolved_language = (language or os.environ.get("MAGICSKILLS_AIG_LANGUAGE") or "en").strip() or "en"
@@ -224,7 +230,7 @@ def _encode_multipart_form(field_name: str, file_path: Path) -> tuple[bytes, str
     return b"".join(parts), f"multipart/form-data; boundary={boundary}"
 
 
-def _upload_archive(archive_path: Path, config: AIInfraGuardConfig) -> str:
+def _upload_archive(archive_path: Path, config: AIInfraGuardConfig) -> tuple[str, dict[str, Any]]:
     body, content_type = _encode_multipart_form("file", archive_path)
     headers = dict(config.headers)
     headers["Content-Type"] = content_type
@@ -238,10 +244,10 @@ def _upload_archive(archive_path: Path, config: AIInfraGuardConfig) -> str:
     data = payload.get("data")
     if not isinstance(data, dict) or not data.get("fileUrl"):
         raise RuntimeError("AI-Infra-Guard upload response is missing data.fileUrl")
-    return str(data["fileUrl"])
+    return str(data["fileUrl"]), payload
 
 
-def _create_scan_task(file_url: str, config: AIInfraGuardConfig) -> str:
+def _create_scan_task(file_url: str, config: AIInfraGuardConfig) -> tuple[str, dict[str, Any]]:
     model_payload: dict[str, Any] = {
         "model": config.model,
         "token": config.token,
@@ -274,10 +280,10 @@ def _create_scan_task(file_url: str, config: AIInfraGuardConfig) -> str:
     data = payload.get("data")
     if not isinstance(data, dict) or not data.get("session_id"):
         raise RuntimeError("AI-Infra-Guard task creation response is missing data.session_id")
-    return str(data["session_id"])
+    return str(data["session_id"]), payload
 
 
-def _poll_task(session_id: str, config: AIInfraGuardConfig) -> dict[str, Any]:
+def _poll_task_payload(session_id: str, config: AIInfraGuardConfig) -> dict[str, Any]:
     deadline = time.monotonic() + config.timeout
     status_url = f"{config.base_url}/api/v1/app/taskapi/status/{session_id}"
     headers = dict(config.headers)
@@ -291,8 +297,8 @@ def _poll_task(session_id: str, config: AIInfraGuardConfig) -> dict[str, Any]:
             raise RuntimeError("AI-Infra-Guard task status response is missing data object")
 
         status = str(data.get("status", "")).strip().lower()
-        if status == "completed":
-            return data
+        if status in {"completed", "done"}:
+            return payload
         if status == "failed":
             log = str(data.get("log", "")).strip()
             raise RuntimeError(f"AI-Infra-Guard scan task {session_id} failed: {log or 'no log provided'}")
@@ -300,94 +306,86 @@ def _poll_task(session_id: str, config: AIInfraGuardConfig) -> dict[str, Any]:
         time.sleep(config.poll_interval)
 
 
-def _fetch_task_result(session_id: str, config: AIInfraGuardConfig) -> Any:
-    payload = _request_json_checked(
+def _poll_task(session_id: str, config: AIInfraGuardConfig) -> dict[str, Any]:
+    payload = _poll_task_payload(session_id, config)
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        raise RuntimeError("AI-Infra-Guard task status response is missing data object")
+    return data
+
+
+def _fetch_task_result_payload(session_id: str, config: AIInfraGuardConfig) -> dict[str, Any]:
+    return _request_json_checked(
         "GET",
         f"{config.base_url}/api/v1/app/taskapi/result/{session_id}",
         headers=config.headers,
         timeout=config.timeout,
     )
+
+
+def _fetch_task_result(session_id: str, config: AIInfraGuardConfig) -> Any:
+    payload = _fetch_task_result_payload(session_id, config)
     return payload.get("data")
 
 
-def _walk_nodes(node: Any) -> Iterable[Any]:
-    yield node
-    if isinstance(node, dict):
-        for value in node.values():
-            yield from _walk_nodes(value)
-    elif isinstance(node, list):
-        for value in node:
-            yield from _walk_nodes(value)
+_RISK_LEVEL_ORDER = {
+    "CRITICAL": 4,
+    "HIGH": 3,
+    "MEDIUM": 2,
+    "LOW": 1,
+    "INFO": 0,
+}
 
 
-def _find_first_scalar_by_keys(node: Any, keys: set[str]) -> str | None:
-    if isinstance(node, dict):
-        for key, value in node.items():
-            normalized = str(key).replace("-", "").replace("_", "").lower()
-            if normalized in keys and isinstance(value, (str, int, float)):
-                return str(value)
-        for value in node.values():
-            found = _find_first_scalar_by_keys(value, keys)
-            if found is not None:
-                return found
-    elif isinstance(node, list):
-        for value in node:
-            found = _find_first_scalar_by_keys(value, keys)
-            if found is not None:
-                return found
-    return None
+def _result_findings(result: Any) -> list[dict[str, Any]]:
+    """Extract findings strictly from `data.result.results`."""
+    if not isinstance(result, dict):
+        return []
+    payload = result.get("result")
+    if not isinstance(payload, dict):
+        return []
+    findings = payload.get("results")
+    if not isinstance(findings, list):
+        return []
+    return [item for item in findings if isinstance(item, dict)]
 
 
-def _infer_findings_count(node: Any) -> int | None:
-    list_keys = {
-        "vulnerabilities",
-        "findings",
-        "issues",
-        "risks",
-        "alerts",
-        "problems",
-    }
-    scalar_keys = {
-        "vulnerabilitycount",
-        "findingcount",
-        "issuecount",
-        "riskcount",
-        "alertcount",
-    }
-    if isinstance(node, dict):
-        for key, value in node.items():
-            normalized = str(key).replace("-", "").replace("_", "").lower()
-            if normalized in list_keys and isinstance(value, list):
-                return len(value)
-            if normalized in scalar_keys and isinstance(value, int):
-                return value
-        for value in node.values():
-            inferred = _infer_findings_count(value)
-            if inferred is not None:
-                return inferred
-    elif isinstance(node, list):
-        for value in node:
-            inferred = _infer_findings_count(value)
-            if inferred is not None:
-                return inferred
-    return None
+def _normalize_risk_level(value: Any) -> str | None:
+    """Normalize one finding level into a stable uppercase severity label."""
+    if not isinstance(value, (str, int, float)):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    upper = text.upper()
+    if upper in _RISK_LEVEL_ORDER:
+        return upper
+    return upper
+
+
+def _aggregate_risk_level(findings: Iterable[dict[str, Any]]) -> str | None:
+    """Return the highest severity level across structured findings."""
+    best_level: str | None = None
+    best_rank = -1
+    fallback_level: str | None = None
+    for item in findings:
+        level = _normalize_risk_level(item.get("level"))
+        if level is None:
+            continue
+        fallback_level = fallback_level or level
+        rank = _RISK_LEVEL_ORDER.get(level, -1)
+        if rank > best_rank:
+            best_rank = rank
+            best_level = level
+    return best_level or fallback_level
 
 
 def summarize_scan_result(result: Any) -> dict[str, object]:
-    """Extract a lightweight summary from the raw A.I.G result payload."""
-    risk_level = _find_first_scalar_by_keys(
-        result,
-        {
-            "risklevel",
-            "severity",
-            "risk",
-            "level",
-        },
-    )
-    findings_count = _infer_findings_count(result)
+    """Extract a lightweight summary from strict `results[*]` schema."""
+    findings = _result_findings(result)
     return {
-        "risk_level": risk_level,
-        "findings_count": findings_count,
+        "risk_level": _aggregate_risk_level(findings),
+        "findings_count": len(findings),
     }
 
 
@@ -402,10 +400,14 @@ def scan_skill_directory(
     with tempfile.TemporaryDirectory(prefix="magicskills-aig-") as tmp:
         archive_path = Path(tmp) / f"{resolved_skill_dir.name}.zip"
         _create_skill_archive(resolved_skill_dir, archive_path)
-        file_url = _upload_archive(archive_path, config)
-        session_id = _create_scan_task(file_url, config)
-        status_data = _poll_task(session_id, config)
-        result_data = _fetch_task_result(session_id, config)
+        file_url, upload_payload = _upload_archive(archive_path, config)
+        session_id, task_payload = _create_scan_task(file_url, config)
+        status_payload = _poll_task_payload(session_id, config)
+        status_data = status_payload.get("data")
+        if not isinstance(status_data, dict):
+            raise RuntimeError("AI-Infra-Guard task status response is missing data object")
+        result_payload = _fetch_task_result_payload(session_id, config)
+        result_data = result_payload.get("data")
 
     return {
         "ok": True,
@@ -416,8 +418,15 @@ def scan_skill_directory(
         "upload_url": file_url,
         "status": str(status_data.get("status", "completed")),
         "task_log": status_data.get("log", ""),
+        "status_data": status_data,
         "summary": summarize_scan_result(result_data),
         "result": result_data,
+        "api_responses": {
+            "upload": upload_payload,
+            "task": task_payload,
+            "status": status_payload,
+            "result": result_payload,
+        },
     }
 
 

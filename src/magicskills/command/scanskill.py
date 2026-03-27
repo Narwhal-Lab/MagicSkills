@@ -37,6 +37,7 @@ def scanskill(
     config: AIInfraGuardConfig | None = None,
     base_url: str | None = None,
     model: str | None = None,
+    api_key: str | None = None,
     token: str | None = None,
     model_base_url: str | None = None,
     prompt: str | None = None,
@@ -51,6 +52,7 @@ def scanskill(
     resolved_config = config or resolve_ai_infra_guard_config(
         base_url=base_url,
         model=model,
+        api_key=api_key,
         token=token,
         model_base_url=model_base_url,
         prompt=prompt,

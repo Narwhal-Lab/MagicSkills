@@ -30,6 +30,8 @@ The examples below assume `bash/zsh`; if you use PowerShell, adjust quoting and 
 | `deleteskills`            | Delete a named skills collection                       | Delete only the collection registration, not the skill files    |
 | `changetooldescription`   | Modify the collection's `tool_description` metadata    | Update tool-oriented description for later querying and integration |
 | `changeclidescription`    | Modify the collection's `cli_description` metadata     | Update CLI-oriented description for later querying and integration |
+| `scanskill`               | Scan one skill with AI-Infra-Guard                     | Validate one skill and render formatted findings                 |
+| `scanskills`              | Scan every skill in a named collection                 | Render collection summary and per-skill scan summary            |
 | `skill-tool`              | Invoke skill capabilities in a tool-function style     | Use unified JSON output to dispatch list/read/exec              |
 
 ## 📌 General Conventions
@@ -708,6 +710,142 @@ Notes:
 
 - This updates collection metadata.
 - It affects `syncskills` output only when you use `--mode cli_description`.
+
+## 🛡️ `scanskill`
+
+**Use case**
+
+You want to scan one local skill directory, or one registered skill name, through AI-Infra-Guard and get a formatted terminal summary.
+
+**Command format**
+
+```bash
+magicskills scanskill <target> [--name <collection-name>] [--base-url URL] [--model MODEL] [--api-key KEY] [--model-base-url URL] [--details] [--save-raw [PATH]]
+```
+
+**Parameters**
+
+- `<target>`: a skill directory path, or a registered skill name.
+- `--name <collection-name>`: when `<target>` is a skill name instead of a path, resolve it from the named collection; if omitted, `Allskills` is used.
+- `--base-url URL`: AI-Infra-Guard base URL.
+- `--model MODEL`: model name used by AI-Infra-Guard.
+- `--api-key KEY`: model API key used by AI-Infra-Guard.
+- `--model-base-url URL`: optional model service base URL.
+- `--details`: after the default summary, print formatted detail sections for the same scan.
+- `--save-raw [PATH]`: save the same formatted detailed output to a text file. When the path is omitted, the file is written to the current working directory.
+
+**Environment variables**
+
+You can avoid repeating connection flags by exporting:
+
+- `MAGICSKILLS_AIG_BASE_URL`
+- `MAGICSKILLS_AIG_MODEL`
+- `MAGICSKILLS_AIG_API_KEY`
+- `MAGICSKILLS_AIG_MODEL_BASE_URL`
+
+**Examples**
+
+Scan one local directory:
+
+```bash
+magicskills scanskill /root/test-skill \
+  --base-url http://localhost:8088 \
+  --model qwen3-max \
+  --api-key "$OPENAI_API_KEY" \
+  --model-base-url "$OPENAI_BASE_URL"
+```
+
+Scan one registered skill name from a named collection:
+
+```bash
+magicskills scanskill xlsx --name haystack_agent2_skills
+```
+
+Show formatted detail output in the terminal:
+
+```bash
+magicskills scanskill xlsx --details
+```
+
+Save formatted detailed output to the current directory:
+
+```bash
+magicskills scanskill xlsx --save-raw
+```
+
+Save formatted detailed output to a specific file:
+
+```bash
+magicskills scanskill xlsx --save-raw ./reports/xlsx-scan.txt
+```
+
+**Output behavior**
+
+- Default output shows two boxed sections: `Skill Summary` and `Skill Results`.
+- `--details` appends formatted detail sections such as `Skill Report <name>` and `Skill Finding Details <name>`.
+- `--save-raw` writes the same formatted detailed view to disk as plain text. It does not depend on `--details`.
+- The flag name `--save-raw` is kept for compatibility, but the saved file is now a formatted text report rather than JSON.
+- Scan commands no longer provide `--json`; use the default boxed output, `--details`, or `--save-raw`.
+
+## 🛡️ `scanskills`
+
+**Use case**
+
+You want to scan every skill in one named skills collection, see the aggregate risk summary, and optionally expand or save the formatted details.
+
+**Command format**
+
+```bash
+magicskills scanskills <name> [--base-url URL] [--model MODEL] [--api-key KEY] [--model-base-url URL] [--details] [--save-raw [PATH]]
+```
+
+**Parameters**
+
+- `<name>`: the named skills collection to scan.
+- `--base-url URL`: AI-Infra-Guard base URL.
+- `--model MODEL`: model name used by AI-Infra-Guard.
+- `--api-key KEY`: model API key used by AI-Infra-Guard.
+- `--model-base-url URL`: optional model service base URL.
+- `--details`: after the collection summary, print formatted detail sections for each successfully scanned skill.
+- `--save-raw [PATH]`: save the same formatted detailed output to a text file. When the path is omitted, the file is written to the current working directory.
+
+**Examples**
+
+Scan one named collection:
+
+```bash
+magicskills scanskills haystack_agent2_skills \
+  --base-url http://localhost:8088 \
+  --model qwen3-max \
+  --api-key "$OPENAI_API_KEY" \
+  --model-base-url "$OPENAI_BASE_URL"
+```
+
+Show formatted detail output for every scanned skill:
+
+```bash
+magicskills scanskills haystack_agent2_skills --details
+```
+
+Save formatted detailed output to the current directory:
+
+```bash
+magicskills scanskills haystack_agent2_skills --save-raw
+```
+
+Save formatted detailed output to a specific file:
+
+```bash
+magicskills scanskills haystack_agent2_skills --save-raw ./reports/haystack-agent2-skills.txt
+```
+
+**Output behavior**
+
+- Default output shows two boxed sections: `Skills Summary` and `Skills Results`.
+- `Skills Results` is intentionally compact and lists one summary row per skill.
+- `--details` appends formatted detail sections for each successful scan, reusing the same style as `scanskill --details`.
+- `--save-raw` writes the same formatted detailed view to disk as plain text. It does not depend on `--details`.
+- The flag name `--save-raw` is kept for compatibility, but the saved file is now a formatted text report rather than JSON.
 
 ## 🤖 `skill-tool`
 

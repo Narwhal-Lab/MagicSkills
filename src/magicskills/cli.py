@@ -13,7 +13,8 @@ import platform
 import shutil
 import subprocess
 import sys
-import textwrap
+import unicodedata
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
@@ -201,7 +202,7 @@ def _scan_kwargs_from_args(args: argparse.Namespace) -> dict[str, object]:
     return {
         "base_url": args.base_url,
         "model": args.model,
-        "token": args.token,
+        "api_key": args.api_key,
         "model_base_url": args.model_base_url,
         "prompt": args.prompt,
         "language": args.language,
@@ -210,6 +211,25 @@ def _scan_kwargs_from_args(args: argparse.Namespace) -> dict[str, object]:
         "timeout": args.timeout,
         "headers": _headers_from_args(args.header),
     }
+
+
+def _add_visible_scan_args(parser: argparse.ArgumentParser) -> None:
+    """Expose the small set of scan flags that should stay in primary CLI help."""
+    parser.add_argument("--base-url", help="AI-Infra-Guard base URL")
+    parser.add_argument("--model", help="Model name used by AI-Infra-Guard scan")
+    parser.add_argument("--api-key", dest="api_key", help="Model API key used by AI-Infra-Guard scan")
+    parser.add_argument("--token", dest="api_key", help=argparse.SUPPRESS)
+    parser.add_argument("--model-base-url", help="Model base URL used by AI-Infra-Guard scan")
+
+
+def _add_hidden_scan_args(parser: argparse.ArgumentParser) -> None:
+    """Keep advanced scan overrides available without advertising them in primary help."""
+    parser.add_argument("--prompt", help=argparse.SUPPRESS)
+    parser.add_argument("--language", help=argparse.SUPPRESS)
+    parser.add_argument("--thread", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--poll-interval", type=float, help=argparse.SUPPRESS)
+    parser.add_argument("--timeout", type=float, help=argparse.SUPPRESS)
+    parser.add_argument("--header", action="append", help=argparse.SUPPRESS)
 
 
 def _supports_color_output() -> bool:
@@ -229,30 +249,412 @@ def _paint(text: str, style: str, enabled: bool) -> str:
     return f"\033[{style}m{text}\033[0m"
 
 
+def _display_width(text: str) -> int:
+    """Estimate terminal cell width for one string."""
+    width = 0
+    for char in text:
+        if unicodedata.combining(char):
+            continue
+        width += 2 if unicodedata.east_asian_width(char) in {"W", "F"} else 1
+    return width
+
+
+def _pad_display_width(text: str, width: int) -> str:
+    """Pad one string with ASCII spaces up to the requested display width."""
+    padding = max(width - _display_width(text), 0)
+    return text + (" " * padding)
+
+
+def _wrap_display_line(text: str, width: int) -> list[str]:
+    """Wrap one line based on terminal display width rather than Python character count."""
+    if width <= 0:
+        return [text]
+    if not text:
+        return [""]
+
+    chunks: list[str] = []
+    current_chars: list[str] = []
+    current_width = 0
+    last_break_index: int | None = None
+
+    for char in text:
+        char_width = 0 if unicodedata.combining(char) else (2 if unicodedata.east_asian_width(char) in {"W", "F"} else 1)
+        if current_chars and current_width + char_width > width:
+            if last_break_index is not None:
+                chunk = "".join(current_chars[: last_break_index + 1]).rstrip()
+                remainder_chars = current_chars[last_break_index + 1 :]
+                while remainder_chars and remainder_chars[0] == " ":
+                    remainder_chars.pop(0)
+                chunks.append(chunk or "".join(current_chars[: last_break_index + 1]))
+                current_chars = remainder_chars
+                current_width = _display_width("".join(current_chars))
+                last_break_index = None
+                for index, existing in enumerate(current_chars):
+                    if existing.isspace() or existing in {"-", "/", "\\"}:
+                        last_break_index = index
+            else:
+                chunks.append("".join(current_chars))
+                current_chars = []
+                current_width = 0
+
+        current_chars.append(char)
+        current_width += char_width
+        if char.isspace() or char in {"-", "/", "\\"}:
+            last_break_index = len(current_chars) - 1
+
+    if current_chars:
+        chunks.append("".join(current_chars).rstrip())
+    return chunks or [""]
+
+
 def _boxed_lines(title: str, rows: list[str], *, width: int, style: str, color: bool) -> list[str]:
     """Render one titled ASCII box with optional color."""
     border = "+" + "-" * (width - 2) + "+"
     output = [
         _paint(border, style, color),
-        _paint("|" + f" {title} ".ljust(width - 2) + "|", style, color),
+        _paint("|" + _pad_display_width(f" {title} ", width - 2) + "|", style, color),
         _paint(border, style, color),
     ]
     inner_width = width - 4
-    wrapper = textwrap.TextWrapper(
-        width=inner_width,
-        break_long_words=True,
-        break_on_hyphens=False,
-        replace_whitespace=False,
-        drop_whitespace=False,
-    )
     for row in rows:
         row_lines = str(row).splitlines() or [""]
         for row_line in row_lines:
-            chunks = wrapper.wrap(row_line.expandtabs(4)) or [""]
+            chunks = _wrap_display_line(row_line.expandtabs(4), inner_width)
             for chunk in chunks:
-                output.append(f"| {chunk.ljust(inner_width)} |")
+                output.append(f"| {_pad_display_width(chunk, inner_width)} |")
     output.append(_paint(border, style, color))
     return output
+
+
+def _scan_output_width() -> int:
+    """Pick a readable terminal width for scan result rendering."""
+    columns = shutil.get_terminal_size(fallback=(96, 24)).columns
+    return max(72, min(columns, 112))
+
+
+def _scan_filename_slug(value: object, *, fallback: str) -> str:
+    """Convert a value into a filesystem-friendly slug."""
+    raw = str(value).strip().lower()
+    if not raw:
+        return fallback
+    parts: list[str] = []
+    previous_was_dash = False
+    for char in raw:
+        if char.isalnum():
+            parts.append(char)
+            previous_was_dash = False
+        elif not previous_was_dash:
+            parts.append("-")
+            previous_was_dash = True
+    slug = "".join(parts).strip("-")
+    return slug or fallback
+
+
+def _default_scan_save_path(result: dict[str, object]) -> Path:
+    """Build a default text output path for saved detailed scan output."""
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    collection_name = result.get("collection_name")
+    if isinstance(collection_name, str) and collection_name.strip():
+        slug = _scan_filename_slug(collection_name, fallback="collection")
+        filename = f"scanskills-{slug}-{timestamp}.txt"
+    else:
+        skill_name = _scan_filename_slug(result.get("skill_name", "skill"), fallback="skill")
+        session_id = _scan_filename_slug(result.get("session_id", timestamp), fallback=timestamp)
+        filename = f"scanskill-{skill_name}-{session_id}.txt"
+    return Path.cwd() / filename
+
+
+def _resolve_scan_color(enabled: bool | None) -> bool:
+    """Resolve color output preference, defaulting to terminal auto-detection."""
+    return _supports_color_output() if enabled is None else enabled
+
+
+def _save_scan_result(result: dict[str, object], destination: str | None) -> Path:
+    """Persist formatted detailed scan output to a text file."""
+    output_path = _default_scan_save_path(result) if destination in {None, ""} else Path(destination).expanduser()
+    resolved_path = output_path.resolve()
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    resolved_path.write_text(_format_saved_scan_output(result), encoding="utf-8")
+    return resolved_path
+
+
+def _nested_scan_result_payload(result: dict[str, object]) -> dict[str, object]:
+    """Return the inner `/result` payload body when present."""
+    raw_result = result.get("result")
+    if not isinstance(raw_result, dict):
+        return {}
+    nested = raw_result.get("result")
+    return nested if isinstance(nested, dict) else {}
+
+
+def _scalar_text(value: object) -> str | None:
+    """Convert simple scalar values to display text."""
+    if isinstance(value, (str, int, float)):
+        text = str(value).strip()
+        return text or None
+    return None
+
+
+_SCAN_RISK_ORDER = {
+    "CRITICAL": 4,
+    "HIGH": 3,
+    "MEDIUM": 2,
+    "LOW": 1,
+    "INFO": 0,
+}
+
+
+def _normalize_scan_level(value: object) -> str | None:
+    """Normalize one structured finding level into a stable uppercase label."""
+    text = _scalar_text(value)
+    if text is None:
+        return None
+    return text.upper()
+
+
+def _scan_findings(result: dict[str, object]) -> list[object]:
+    """Extract structured findings strictly from `result.results`."""
+    payload = _nested_scan_result_payload(result)
+    findings = payload.get("results")
+    if not isinstance(findings, list):
+        return []
+    return [item for item in findings if isinstance(item, dict)]
+
+
+def _scan_findings_count(result: dict[str, object]) -> int | None:
+    """Resolve findings count strictly from structured findings."""
+    findings = _scan_findings(result)
+    return len(findings)
+
+
+def _scan_risk_levels(result: dict[str, object]) -> list[str]:
+    """Return one normalized risk level for each structured finding, preserving duplicates."""
+    levels: list[str] = []
+    for item in _scan_findings(result):
+        if not isinstance(item, dict):
+            continue
+        level = _normalize_scan_level(item.get("level"))
+        if level is not None:
+            levels.append(level)
+    return levels
+
+
+def _scan_risk_level(result: dict[str, object]) -> str | None:
+    """Aggregate the highest structured risk level for one scan result."""
+    best_level: str | None = None
+    best_rank = -1
+    fallback_level: str | None = None
+    for level in _scan_risk_levels(result):
+        fallback_level = fallback_level or level
+        rank = _SCAN_RISK_ORDER.get(level, -1)
+        if rank > best_rank:
+            best_rank = rank
+            best_level = level
+    return best_level or fallback_level
+
+
+def _scan_report_rows(report: str) -> list[str]:
+    """Render one Markdown report into terminal-friendly plain text rows."""
+
+    def flush_paragraph(rows: list[str], paragraph: list[str]) -> None:
+        if not paragraph:
+            return
+        text = " ".join(part.strip() for part in paragraph if part.strip())
+        if text:
+            rows.append(text)
+        paragraph.clear()
+
+    def normalize_list_item(line: str) -> str | None:
+        stripped = line.strip()
+        for prefix in ("- ", "* ", "+ "):
+            if stripped.startswith(prefix):
+                body = stripped[len(prefix):].strip()
+                return f"- {body}" if body else "-"
+
+        digits = 0
+        while digits < len(stripped) and stripped[digits].isdigit():
+            digits += 1
+        if digits and digits + 1 < len(stripped) and stripped[digits] in {".", ")"} and stripped[digits + 1] == " ":
+            body = stripped[digits + 2 :].strip()
+            return f"{stripped[:digits]}. {body}" if body else f"{stripped[:digits]}."
+        return None
+
+    rows: list[str] = []
+    paragraph: list[str] = []
+    in_code_block = False
+    code_block_label: str | None = None
+
+    for raw_line in report.splitlines():
+        line = raw_line.rstrip()
+        stripped = line.strip()
+
+        if in_code_block:
+            if stripped.startswith("```"):
+                in_code_block = False
+                code_block_label = None
+                continue
+            rows.append(f"    {line}" if line else "")
+            continue
+
+        if stripped.startswith("```"):
+            flush_paragraph(rows, paragraph)
+            if rows and rows[-1] != "":
+                rows.append("")
+            in_code_block = True
+            code_block_label = stripped[3:].strip() or None
+            rows.append(f"[{code_block_label}]" if code_block_label else "[code]")
+            continue
+
+        if not stripped:
+            flush_paragraph(rows, paragraph)
+            if rows and rows[-1] != "":
+                rows.append("")
+            continue
+
+        if stripped.startswith("#"):
+            flush_paragraph(rows, paragraph)
+            heading = stripped.lstrip("#").strip()
+            if heading:
+                if rows and rows[-1] != "":
+                    rows.append("")
+                rows.append(heading)
+            continue
+
+        if stripped.startswith(">"):
+            flush_paragraph(rows, paragraph)
+            quote = stripped.lstrip(">").strip()
+            rows.append(f"> {quote}" if quote else ">")
+            continue
+
+        if stripped.startswith("|"):
+            flush_paragraph(rows, paragraph)
+            rows.append(stripped)
+            continue
+
+        list_item = normalize_list_item(stripped)
+        if list_item is not None:
+            flush_paragraph(rows, paragraph)
+            rows.append(list_item)
+            continue
+
+        paragraph.append(stripped)
+
+    flush_paragraph(rows, paragraph)
+
+    while rows and rows[0] == "":
+        rows.pop(0)
+    while rows and rows[-1] == "":
+        rows.pop()
+
+    collapsed: list[str] = []
+    for row in rows:
+        if row == "" and collapsed and collapsed[-1] == "":
+            continue
+        collapsed.append(row)
+    return collapsed
+
+
+def _scan_preview_lines(result: dict[str, object], *, limit: int = 3) -> list[str]:
+    """Render a short preview for the first few structured findings."""
+    preview: list[str] = []
+    for index, item in enumerate(_scan_findings(result)[:limit], start=1):
+        if isinstance(item, dict):
+            title = _scalar_text(item.get("title")) or "(untitled finding)"
+            severity = _normalize_scan_level(item.get("level"))
+            row = f"{index}. {title}"
+            if severity is not None:
+                row += f" [{severity}]"
+            preview.append(row)
+        else:
+            preview.append(f"{index}. {item}")
+    remaining = len(_scan_findings(result)) - len(preview)
+    if remaining > 0:
+        preview.append(f"... and {remaining} more")
+    return preview
+
+
+def _scan_result_rows(result: dict[str, object]) -> list[str]:
+    """Render concise per-finding result rows for one scan."""
+    rows: list[str] = []
+    for index, item in enumerate(_scan_findings(result), start=1):
+        if isinstance(item, dict):
+            title = _scalar_text(item.get("title")) or "(untitled finding)"
+            severity = _normalize_scan_level(item.get("level"))
+            row = f"{index}. {title}"
+            if severity is not None:
+                row += f" [{severity}]"
+            rows.append(row)
+        else:
+            rows.append(f"{index}. {item}")
+    if not rows:
+        rows.append("No findings.")
+    return rows
+
+
+def _scan_detailed_finding_rows(result: dict[str, object]) -> list[str]:
+    """Render full structured finding details for one scan."""
+    rows: list[str] = []
+    findings = _scan_findings(result)
+    if not findings:
+        return ["No detailed findings."]
+    for index, item in enumerate(findings, start=1):
+        if not isinstance(item, dict):
+            if rows:
+                rows.append("")
+            rows.append(f"{index}. {item}")
+            continue
+
+        if rows:
+            rows.append("")
+
+        title = _scalar_text(item.get("title")) or "(untitled finding)"
+        level = _normalize_scan_level(item.get("level"))
+        risk_type = _scalar_text(item.get("risk_type"))
+        description = _scalar_text(item.get("description"))
+        suggestion = _scalar_text(item.get("suggestion"))
+
+        rows.append(f"{index}. {title}")
+        if level is not None:
+            rows.append(f"Level: {level}")
+        if risk_type is not None:
+            rows.append(f"Risk type: {risk_type}")
+        if description is not None:
+            rows.append("Description:")
+            for row in _scan_report_rows(description):
+                rows.append(f"  {row}" if row else "")
+        if suggestion is not None:
+            rows.append("Suggestion:")
+            for row in _scan_report_rows(suggestion):
+                rows.append(f"  {row}" if row else "")
+    return rows
+
+
+def _scan_summary_rows(result: dict[str, object]) -> list[str]:
+    """Build the standard summary rows for one scan result."""
+    risk_levels = _scan_risk_levels(result)
+    findings_count = _scan_findings_count(result)
+    payload = _nested_scan_result_payload(result)
+    score = _scalar_text(payload.get("score"))
+    model = _scalar_text(payload.get("llm"))
+    language = _scalar_text(payload.get("language"))
+
+    rows = [
+        f"Skill: {result.get('skill_name', '(unknown)')}",
+        f"Path: {result.get('skill_path', '(unknown)')}",
+        f"Session ID: {result.get('session_id', '(unknown)')}",
+        f"Status: {result.get('status', '(unknown)')}",
+    ]
+    if score is not None:
+        rows.append(f"Score: {score}")
+    if findings_count is not None:
+        rows.append(f"Findings: {findings_count}")
+    if risk_levels:
+        rows.append(f"Risk levels: {', '.join(risk_levels)}")
+    if model is not None:
+        rows.append(f"Model: {model}")
+    if language is not None:
+        rows.append(f"Language: {language}")
+    return rows
 
 
 def _skills_from_paths(paths: list[Path] | None) -> Skills:
@@ -613,58 +1015,165 @@ def cmd_skill_tool(args: argparse.Namespace) -> int:
     return 0 if result.get("ok") else 1
 
 
-def _format_scan_result(result: dict[str, object]) -> str:
-    summary = result.get("summary")
-    risk_level = None
-    findings_count = None
-    if isinstance(summary, dict):
-        risk_level = summary.get("risk_level")
-        findings_count = summary.get("findings_count")
+def _format_scan_result(
+    result: dict[str, object],
+    *,
+    color: bool | None = None,
+    width: int | None = None,
+) -> str:
+    findings_count = _scan_findings_count(result)
 
-    rows = [
-        f"Skill: {result.get('skill_name', '(unknown)')}",
-        f"Path: {result.get('skill_path', '(unknown)')}",
-        f"Session ID: {result.get('session_id', '(unknown)')}",
-        f"Status: {result.get('status', '(unknown)')}",
-    ]
-    if risk_level not in {None, ""}:
-        rows.append(f"Risk level: {risk_level}")
-    if findings_count is not None:
-        rows.append(f"Findings: {findings_count}")
-    task_log = str(result.get("task_log", "")).strip()
-    if task_log:
-        rows.append(f"Task log: {task_log}")
-    return "\n".join(rows)
+    color = _resolve_scan_color(color)
+    width = _scan_output_width() if width is None else width
+    sections: list[str] = []
+
+    status_style = "1;32" if findings_count in {None, 0} else "1;33"
+    sections.extend(_boxed_lines("Skill Summary", _scan_summary_rows(result), width=width, style=status_style, color=color))
+
+    sections.append("")
+    sections.extend(_boxed_lines("Skill Results", _scan_result_rows(result), width=width, style="1;31", color=color))
+
+    return "\n".join(sections)
 
 
-def _format_scanskills_result(result: dict[str, object]) -> str:
-    lines = [
+def _format_scan_details(
+    result: dict[str, object],
+    *,
+    prefix: str = "Skill",
+    color: bool | None = None,
+    width: int | None = None,
+) -> str:
+    """Render formatted detailed sections for one scan result."""
+    color = _resolve_scan_color(color)
+    width = _scan_output_width() if width is None else width
+    sections: list[str] = []
+    payload = _nested_scan_result_payload(result)
+    report = _scalar_text(payload.get("readme"))
+    detail_rows = _scan_detailed_finding_rows(result)
+    skill_name = str(result.get("skill_name", "(unknown)"))
+
+    report_rows = _scan_report_rows(report or "")
+    if report_rows:
+        sections.extend(
+            _boxed_lines(
+                f"{prefix} Report {skill_name}",
+                report_rows,
+                width=width,
+                style="1;36",
+                color=color,
+            )
+        )
+
+    if detail_rows:
+        if sections:
+            sections.append("")
+        sections.extend(
+            _boxed_lines(
+                f"{prefix} Finding Details {skill_name}",
+                detail_rows,
+                width=width,
+                style="1;31",
+                color=color,
+            )
+        )
+
+    return "\n".join(sections)
+
+
+def _format_scanskills_result(result: dict[str, object], *, color: bool | None = None, width: int | None = None) -> str:
+    color = _resolve_scan_color(color)
+    width = _scan_output_width() if width is None else width
+    sections: list[str] = []
+    items = [item for item in result.get("results", []) if isinstance(item, dict)]
+    successful_items = [item for item in items if item.get("ok")]
+
+    total_findings = 0
+    skills_with_findings = 0
+    scores: list[float] = []
+    for item in successful_items:
+        findings_count = _scan_findings_count(item)
+        if findings_count is not None:
+            total_findings += findings_count
+            if findings_count > 0:
+                skills_with_findings += 1
+        payload = _nested_scan_result_payload(item)
+        score_value = payload.get("score")
+        if isinstance(score_value, (int, float)):
+            scores.append(float(score_value))
+
+    summary_rows = [
         f"Collection: {result.get('collection_name', '(unknown)')}",
         f"Total skills: {result.get('total_skills', 0)}",
         f"Succeeded: {result.get('succeeded', 0)}",
         f"Failed: {result.get('failed', 0)}",
-        "",
+        f"Findings across successful scans: {total_findings}",
+        f"Skills with findings: {skills_with_findings}",
     ]
-    for item in result.get("results", []):
-        if not isinstance(item, dict):
-            continue
-        skill_name = item.get("skill_name", "(unknown)")
+    if scores:
+        average_score = sum(scores) / len(scores)
+        summary_rows.append(f"Average score: {average_score:.1f}")
+    sections.extend(_boxed_lines("Skills Summary", summary_rows, width=width, style="1;36", color=color))
+
+    result_rows: list[str] = []
+    for item in items:
+        skill_name = str(item.get("skill_name", "(unknown)"))
         if item.get("ok"):
-            summary = item.get("summary")
-            risk_level = None
-            findings_count = None
-            if isinstance(summary, dict):
-                risk_level = summary.get("risk_level")
-                findings_count = summary.get("findings_count")
             detail_parts = [str(item.get("status", "completed"))]
-            if risk_level not in {None, ""}:
-                detail_parts.append(f"risk={risk_level}")
+            payload = _nested_scan_result_payload(item)
+            score = _scalar_text(payload.get("score"))
+            findings_count = _scan_findings_count(item)
+            risk_levels = _scan_risk_levels(item)
+            if score is not None:
+                detail_parts.append(f"score={score}")
             if findings_count is not None:
                 detail_parts.append(f"findings={findings_count}")
-            lines.append(f"- {skill_name}: {', '.join(detail_parts)}")
+            if risk_levels:
+                detail_parts.append(f"risks={', '.join(risk_levels)}")
+            result_rows.append(f"- {skill_name}: {' | '.join(detail_parts)}")
         else:
-            lines.append(f"- {skill_name}: failed ({item.get('error', 'unknown error')})")
-    return "\n".join(lines)
+            result_rows.append(f"- {skill_name}: failed")
+
+    if result_rows:
+        sections.append("")
+        sections.extend(_boxed_lines("Skills Results", result_rows, width=width, style="1;35", color=color))
+
+    return "\n".join(sections)
+
+
+def _format_scanskills_details(
+    result: dict[str, object],
+    *,
+    color: bool | None = None,
+    width: int | None = None,
+) -> str:
+    """Render formatted detailed sections for each successful scan in one collection."""
+    color = _resolve_scan_color(color)
+    width = _scan_output_width() if width is None else width
+    items = [item for item in result.get("results", []) if isinstance(item, dict)]
+    successful_items = [item for item in items if item.get("ok")]
+    sections: list[str] = []
+    for item in successful_items:
+        detail = _format_scan_details(item, color=color, width=width)
+        if not detail:
+            continue
+        if sections:
+            sections.append("")
+        sections.append(detail)
+    return "\n".join(sections)
+
+
+def _format_saved_scan_output(result: dict[str, object]) -> str:
+    """Render the text saved by `--save-raw`: summary plus formatted details."""
+    width = 112
+    if isinstance(result.get("collection_name"), str):
+        summary = _format_scanskills_result(result, color=False, width=width)
+        details = _format_scanskills_details(result, color=False, width=width)
+    else:
+        summary = _format_scan_result(result, color=False, width=width)
+        details = _format_scan_details(result, color=False, width=width)
+    if details:
+        return f"{summary}\n\n{details}"
+    return summary
 
 
 def cmd_scan_skill(args: argparse.Namespace) -> int:
@@ -685,10 +1194,13 @@ def cmd_scan_skill(args: argparse.Namespace) -> int:
     except (ValueError, FileNotFoundError, RuntimeError, TimeoutError) as exc:
         raise SystemExit(str(exc)) from exc
 
-    if args.json:
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-    else:
-        print(_format_scan_result(result))
+    print(_format_scan_result(result))
+    if args.details:
+        print("")
+        print(_format_scan_details(result))
+    if args.save_raw is not None:
+        saved_path = _save_scan_result(result, args.save_raw)
+        print(f"Raw result saved: {saved_path}")
     return 0
 
 
@@ -698,16 +1210,18 @@ def cmd_scan_skills(args: argparse.Namespace) -> int:
     try:
         result = command_scanskills(
             skills,
-            fail_fast=args.fail_fast,
             **_scan_kwargs_from_args(args),
         )
     except (ValueError, FileNotFoundError, RuntimeError, TimeoutError) as exc:
         raise SystemExit(str(exc)) from exc
 
-    if args.json:
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-    else:
-        print(_format_scanskills_result(result))
+    print(_format_scanskills_result(result))
+    if args.details:
+        print("")
+        print(_format_scanskills_details(result))
+    if args.save_raw is not None:
+        saved_path = _save_scan_result(result, args.save_raw)
+        print(f"Raw result saved: {saved_path}")
     return 0 if result.get("ok") else 1
 
 
@@ -826,41 +1340,28 @@ def build_parser() -> argparse.ArgumentParser:
     p_scan = sub.add_parser("scanskill", help="Scan one skill with AI-Infra-Guard")
     p_scan.add_argument("target", help="Skill name or skill directory path")
     p_scan.add_argument("--name", help="Resolve skill name from a named skills collection (default: Allskills)")
-    p_scan.add_argument("--base-url", help="AI-Infra-Guard base URL")
-    p_scan.add_argument("--model", help="Model name used by AI-Infra-Guard scan")
-    p_scan.add_argument("--token", help="Model token used by AI-Infra-Guard scan")
-    p_scan.add_argument("--model-base-url", help="Model base URL used by AI-Infra-Guard scan")
-    p_scan.add_argument("--prompt", help="Custom scan prompt")
-    p_scan.add_argument("--language", help="Scan language (default: env or en)")
-    p_scan.add_argument("--thread", type=int, help="Concurrent thread count")
-    p_scan.add_argument("--poll-interval", type=float, help="Polling interval in seconds")
-    p_scan.add_argument("--timeout", type=float, help="Overall scan timeout in seconds")
+    _add_visible_scan_args(p_scan)
+    _add_hidden_scan_args(p_scan)
     p_scan.add_argument(
-        "--header",
-        action="append",
-        help="Optional request header for AI-Infra-Guard API, format KEY:VALUE",
+        "--save-raw",
+        nargs="?",
+        const="",
+        help="Save formatted detailed scan output to a file; optionally provide a path",
     )
-    p_scan.add_argument("--json", action="store_true", help="JSON output")
+    p_scan.add_argument("--details", action="store_true", help="Print formatted detailed scan output after the summary")
     p_scan.set_defaults(func=cmd_scan_skill)
 
     p_scan_all = sub.add_parser("scanskills", help="Scan all skills in a named collection with AI-Infra-Guard")
     p_scan_all.add_argument("name", help="Skills instance name")
-    p_scan_all.add_argument("--base-url", help="AI-Infra-Guard base URL")
-    p_scan_all.add_argument("--model", help="Model name used by AI-Infra-Guard scan")
-    p_scan_all.add_argument("--token", help="Model token used by AI-Infra-Guard scan")
-    p_scan_all.add_argument("--model-base-url", help="Model base URL used by AI-Infra-Guard scan")
-    p_scan_all.add_argument("--prompt", help="Custom scan prompt")
-    p_scan_all.add_argument("--language", help="Scan language (default: env or en)")
-    p_scan_all.add_argument("--thread", type=int, help="Concurrent thread count")
-    p_scan_all.add_argument("--poll-interval", type=float, help="Polling interval in seconds")
-    p_scan_all.add_argument("--timeout", type=float, help="Overall scan timeout in seconds")
+    _add_visible_scan_args(p_scan_all)
+    _add_hidden_scan_args(p_scan_all)
     p_scan_all.add_argument(
-        "--header",
-        action="append",
-        help="Optional request header for AI-Infra-Guard API, format KEY:VALUE",
+        "--save-raw",
+        nargs="?",
+        const="",
+        help="Save formatted detailed scan output to a file; optionally provide a path",
     )
-    p_scan_all.add_argument("--fail-fast", action="store_true", help="Stop at the first failed skill scan")
-    p_scan_all.add_argument("--json", action="store_true", help="JSON output")
+    p_scan_all.add_argument("--details", action="store_true", help="Print formatted detailed scan output after the summary")
     p_scan_all.set_defaults(func=cmd_scan_skills)
 
     return parser
