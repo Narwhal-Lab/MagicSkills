@@ -64,6 +64,10 @@ English | [简体中文](./README.zh-CN.md)
 ---
 
 <a id="overview-en"></a>
+
+## Demo Video
+[Watch the demo video](./README-Video.mp4)
+
 ## 🧭 Overview
 
 MagicSkills is a local-first skill infrastructure layer for multi-agent projects.
