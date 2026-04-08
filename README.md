@@ -63,6 +63,10 @@ English | [简体中文](./README.zh-CN.md)
 
 ---
 
+## Demo Video
+
+[Watch the demo video](./README-Video.mp4)
+
 <a id="overview-en"></a>
 ## 🧭 Overview
 
