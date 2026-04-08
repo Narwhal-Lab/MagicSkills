@@ -60,6 +60,9 @@
 
 <a id="overview-cn"></a>
 
+## 预览视频
+[Watch the demo video](./README-Video.mp4)
+
 ## 🧭 概览
 
 MagicSkills 是面向多 Agent 项目的本地优先 skill 基础设施层。
