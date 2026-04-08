@@ -74,6 +74,7 @@ English | [简体中文](./README.zh-CN.md)
 <a id="overview-en"></a>
 
 [Watch the demo video](./README-Video-small.mp4)
+https://github.com/user-attachments/assets/dd04d9bf-00f9-4a00-94d5-9d3de2c74600
 
 ## 🧭 Overview
 
