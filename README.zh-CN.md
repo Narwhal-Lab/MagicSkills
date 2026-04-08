@@ -58,6 +58,14 @@
 
 ---
 
+## 演示视频
+
+<p align="center">
+  <video src="./README-Video.mp4" controls width="960">
+    你的浏览器不支持 video 标签。
+  </video>
+</p>
+
 <a id="overview-cn"></a>
 
 ## 预览视频
