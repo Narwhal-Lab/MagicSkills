@@ -60,16 +60,7 @@
 
 ## 演示视频
 
-<p align="center">
-  <video src="./README-Video.mp4" controls width="960">
-    你的浏览器不支持 video 标签。
-  </video>
-</p>
-
-<a id="overview-cn"></a>
-
-## 预览视频
-[Watch the demo video](./README-Video.mp4)
+https://github.com/user-attachments/assets/dd04d9bf-00f9-4a00-94d5-9d3de2c74600
 
 ## 🧭 概览
 
