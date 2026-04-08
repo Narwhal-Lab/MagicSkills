@@ -65,11 +65,7 @@ English | [简体中文](./README.zh-CN.md)
 
 ## Demo Video
 
-<p align="center">
-  <video src="./README-Video.mp4" controls width="960">
-    Your browser does not support the video tag.
-  </video>
-</p>
+[Watch the demo video](./README-Video.mp4)
 
 <a id="overview-en"></a>
 ## 🧭 Overview
