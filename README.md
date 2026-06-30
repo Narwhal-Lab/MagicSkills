@@ -168,7 +168,7 @@ In practice, we recommend using one shared skills root such as `~/allskills`, so
 
 ### 3. 🧩 Create One Agent Collection
 
-Here `pdf` and `docx` are example skill names. Replace them with the skills currently available in your own `Allskills` view. If you only installed this repo's local `skill_template/`, use `c_2_ast` here instead.
+Here `pdf` and `docx` are example skill names. Replace them with the skills currently available in your own `Allskills` view. If you only installed this repo's local `skill_template/`, use `c_2_ast` or `x-social-approval` here instead.
 
 ```bash
 magicskills addskills agent1_skills --skill-list pdf docx --agent-md-path /agent_workdir/AGENTS.md
