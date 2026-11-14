@@ -1,0 +1,4 @@
+interface:
+  display_name: "AIHOT"
+  short_description: "查询最新 AI 资讯、当前热点、关键词动态与 AI 日报"
+  default_prompt: "使用 $aihot 总结过去 24 小时最重要的 AI 动态。"
